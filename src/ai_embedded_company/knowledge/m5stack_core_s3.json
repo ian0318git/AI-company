@@ -1,0 +1,180 @@
+{
+  "board": "M5Stack Core S3",
+  "chip": "ESP32-S3",
+  "description": "Complete pinout and hardware reference for M5Stack Core S3 development board",
+  "reference_url": "https://docs.m5stack.com/en/core/CoreS3",
+  "schematic_url": "https://docs.m5stack.com/en/core/CoreS3",
+  "specifications": {
+    "mcu": "ESP32-S3 (Xtensa LX7 dual-core, up to 240MHz)",
+    "sram": "512KB internal SRAM",
+    "psram": "8MB Octal PSRAM (OPI)",
+    "flash": "16MB (Quad SPI)",
+    "wifi": "802.11 b/g/n (2.4GHz)",
+    "ble": "Bluetooth 5.0 LE",
+    "display": "2.0 inch ILI9342C TFT LCD, 320x240 pixels",
+    "touch": "FT6336U capacitive touch panel (I2C addr: 0x38)",
+    "imu": "BMI270 6-axis IMU + BMM150 3-axis magnetometer",
+    "microphone": "SPM1423 PDM MEMS microphone",
+    "audio": "AW88298 I2S audio amplifier + built-in speaker",
+    "sd_card": "microSD card slot (SPI mode, max 32GB)",
+    "pmic": "AXP2101 Power Management IC",
+    "rtc": "BM8563 RTC (I2C addr: 0x51)",
+    "led": "SK6812 RGB LED (Neopixel-compatible, GPIO 21)",
+    "buzzer": "Passive buzzer (GPIO 7, PWM-driven)",
+    "buttons": "Power (GPIO 0, BOOT), Reset (EN), Programmable button on screen",
+    "usb": "USB-C (USB OTG + Serial/JTAG)",
+    "battery": "Internal LiPo 3.7V connector (AXP2101 charger)"
+  },
+  "pinout": {
+    "display": {
+      "interface": "SPI",
+      "cs": 4,
+      "dc": 15,
+      "rst": 13,
+      "mosi": 23,
+      "sclk": 18,
+      "backlight": 12,
+      "miso": -1,
+      "notes": "ILI9342C driven via M5GFX/LovyanGFX. Default rotation: 0"
+    },
+    "touch": {
+      "interface": "I2C",
+      "sda": 8,
+      "scl": 9,
+      "address": "0x38",
+      "interrupt": 3,
+      "reset": 11,
+      "notes": "FT6336U capacitive touch controller"
+    },
+    "imu": {
+      "interface": "I2C",
+      "sda": 8,
+      "scl": 9,
+      "bmi270_addr": "0x68",
+      "bmm150_addr": "0x10",
+      "notes": "BMI270 (accel+gyro) + BMM150 (magnetometer). Shared I2C bus with touch."
+    },
+    "microphone": {
+      "interface": "PDM",
+      "clk": 47,
+      "data": 14,
+      "notes": "SPM1423 PDM MEMS mic. Use ESP32-S3 I2S in PDM mode."
+    },
+    "audio_amplifier": {
+      "interface": "I2S",
+      "bclk": 17,
+      "lrck": 16,
+      "dout": 10,
+      "enable": 6,
+      "notes": "AW88298 I2S DAC + amplifier. Mono output to built-in speaker."
+    },
+    "sd_card": {
+      "interface": "SPI",
+      "cs": 5,
+      "mosi": 23,
+      "miso": 19,
+      "sclk": 18,
+      "notes": "Shared SPI bus with display (different CS). Max 32GB, FAT32."
+    },
+    "grove_port": {
+      "connector": "HY2.0-4P (Grove compatible)",
+      "sda": 1,
+      "scl": 2,
+      "vcc": "5V",
+      "gnd": "GND",
+      "notes": "Port A. I2C Grove connector. 5V power, 3.3V I2C signals (level-shifted). Built-in pull-ups."
+    },
+    "gpio_header": {
+      "g1": 1,
+      "g2": 2,
+      "g3": 3,
+      "g4": 4,
+      "g5": 5,
+      "g6": 6,
+      "g7": 7,
+      "g8": 8,
+      "notes": "8-pin GPIO header at bottom. Pins shared with Grove/other functions. Check conflicts."
+    },
+    "rgb_led": {
+      "gpio": 21,
+      "type": "SK6812 (WS2812-compatible)",
+      "notes": "Single addressable RGB LED. Use FastLED or Adafruit NeoPixel library."
+    },
+    "buzzer": {
+      "gpio": 7,
+      "type": "Passive piezo buzzer",
+      "notes": "Drive with PWM for tones. Use ledc (ESP-IDF) or tone() (Arduino)."
+    },
+    "rtc": {
+      "interface": "I2C",
+      "sda": 8,
+      "scl": 9,
+      "address": "0x51",
+      "notes": "BM8563 RTC. Shared I2C bus. Battery-backed via internal LiPo."
+    },
+    "pmic": {
+      "interface": "I2C",
+      "sda": 8,
+      "scl": 9,
+      "address": "0x34",
+      "notes": "AXP2101 PMIC. Power management, battery charging, power rails control."
+    },
+    "key_pins": {
+      "gpio_0": "BOOT button. Pull LOW at reset to enter download/flash mode. Built-in pull-up.",
+      "gpio_46": "Strapping pin. Do NOT use as GPIO. Controls boot mode.",
+      "usb_dm": 19,
+      "usb_dp": 20,
+      "uart_tx": 43,
+      "uart_rx": 44,
+      "notes": "USB-C has built-in USB-to-Serial/JTAG (no external chip needed)."
+    }
+  },
+  "i2c_bus": {
+    "sda": 8,
+    "scl": 9,
+    "frequency": "100kHz (standard) or 400kHz (fast)",
+    "devices": [
+      {"name": "FT6336U Touch", "address": "0x38"},
+      {"name": "BMI270 IMU", "address": "0x68"},
+      {"name": "BMM150 Magnetometer", "address": "0x10"},
+      {"name": "BM8563 RTC", "address": "0x51"},
+      {"name": "AXP2101 PMIC", "address": "0x34"}
+    ],
+    "notes": "Shared I2C bus. All devices on same SDA(8)/SCL(9). Built-in pull-up resistors. External Grove devices share this bus."
+  },
+  "power_management": {
+    "pmic": "AXP2101",
+    "input": "USB-C 5V or LiPo 3.7V battery",
+    "output_rails": {
+      "vdd_3v3": "3.3V main rail",
+      "vdd_1v8": "1.8V for PSRAM",
+      "vdd_5v": "5V for Grove/servo",
+      "lcd_bl": "LCD backlight boost"
+    },
+    "battery": {
+      "type": "LiPo 3.7V",
+      "connector": "JST PH 2.0mm",
+      "charging": "USB-C, up to 500mA",
+      "monitoring": "Via AXP2101 I2C registers"
+    }
+  },
+  "development_tips": {
+    "framework": "Arduino (recommended for beginners) or ESP-IDF (for advanced)",
+    "board_definition": "M5Stack CoreS3 (PlatformIO) or ESP32-S3-DevKitC-1 (Arduino IDE)",
+    "flash_settings": "QIO mode, 80MHz, 16MB flash",
+    "partition_scheme": "Default 4MB or 8MB with spiffs (min_spiffs.csv)",
+    "psram": "Octal PSRAM enabled by default in Arduino. Use ps_malloc() or heap_caps_malloc(size, MALLOC_CAP_SPIRAM).",
+    "debug": "Built-in USB-JTAG. Use `openocd -f board/esp32s3-builtin.cfg` for debugging.",
+    "monitor_speed": "115200 baud (default Arduino monitor speed)",
+    "libraries": ["M5Unified", "M5GFX", "LovyanGFX", "M5CoreS3"],
+    "pin_conflicts": {
+      "display_spi": "CS=4, DC=15, MOSI=23, SCLK=18",
+      "sd_spi": "CS=5, MOSI=23, MISO=19, SCLK=18",
+      "shared_spi": "Display and SD share MOSI(23) and SCLK(18). Different CS pins.",
+      "grove_gpio": "Grove SDA=1, SCL=2. If using GPIO header, avoid using 1 and 2 as GPIO."
+    }
+  },
+  "platformio_template": {
+    "ini": "[env:m5stack-cores3]\nplatform = espressif32\nboard = m5stack-cores3\nframework = arduino\nmonitor_speed = 115200\nupload_speed = 921600\nboard_build.flash_mode = qio\nboard_build.partitions = default_8MB.csv\nbuild_flags =\n    -D CORE_DEBUG_LEVEL=0\n    -D BOARD_HAS_PSRAM\n    -mfix-esp32-psram-cache-issue\nlib_deps =\n    m5stack/M5Unified @ ^0.2.0\n    m5stack/M5GFX @ ^0.2.0"
+  }
+}

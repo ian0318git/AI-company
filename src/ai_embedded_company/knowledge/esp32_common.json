@@ -1,0 +1,94 @@
+{
+  "chip": "ESP32 / ESP32-S3 Common Knowledge",
+  "description": "Common ESP32 development patterns, gotchas, and best practices",
+  "reference_urls": [
+    "https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/",
+    "https://docs.platformio.org/en/latest/platforms/espressif32.html"
+  ],
+  "memory_map": {
+    "esp32s3": {
+      "internal_dram": "512KB",
+      "internal_iram": "128KB (for ISR code)",
+      "psram": "Up to 8MB (Octal) or 16MB (Quad)",
+      "flash": "Up to 16MB (Quad SPI)",
+      "rom": "384KB (boot ROM)",
+      "rtc_slow": "8KB (survives deep sleep)",
+      "rtc_fast": "8KB (survives deep sleep)"
+    }
+  },
+  "common_pitfalls": [
+    {
+      "title": "ADC2 + WiFi conflict",
+      "problem": "ADC2 is unavailable when WiFi is active on ESP32/ESP32-S3.",
+      "fix": "Use ADC1 (GPIO 1-10 on ESP32-S3) for analog reads when WiFi is needed.",
+      "severity": "high"
+    },
+    {
+      "title": "PSRAM cache issue",
+      "problem": "On ESP32-S3, flash cache and PSRAM cache share resources. Heavy flash access while PSRAM is in use can cause corruption.",
+      "fix": "Add -mfix-esp32-psram-cache-issue to build flags. In ESP-IDF: configSPIRAM_FETCH_INSTRUCTIONS and SPIRAM_RODATA.",
+      "severity": "high"
+    },
+    {
+      "title": "I2C clock stretching",
+      "problem": "ESP32 hardware I2C has known issues with clock stretching. Some sensors (BME280, CCS811) stretch the clock and cause timeouts.",
+      "fix": "Increase I2C timeout, reduce speed, or use software I2C (bit-bang).",
+      "severity": "medium"
+    },
+    {
+      "title": "GPIO interrupt latency",
+      "problem": "ESP32 GPIO interrupts go through a software dispatcher. Latency can be 2-50µs depending on other ISRs.",
+      "fix": "For deterministic sub-microsecond response, use RMT peripheral or dedicated GPIO glitch filter.",
+      "severity": "medium"
+    },
+    {
+      "title": "Strapping pins",
+      "problem": "GPIO 0, 46 on ESP32-S3 are strapping pins that control boot mode. Using them as GPIO can prevent boot.",
+      "fix": "Check strapping pin table in datasheet. Never use strapping pins as GPIO in production.",
+      "severity": "high"
+    },
+    {
+      "title": "Deep sleep wake sources",
+      "problem": "Not all GPIOs can wake from deep sleep. Only RTC GPIOs work.",
+      "fix": "Use RTC GPIOs (marked in datasheet) for wake sources. Configure with esp_sleep_enable_ext0_wakeup().",
+      "severity": "medium"
+    },
+    {
+      "title": "Watchdog timer resets",
+      "problem": "Long-running operations trigger the Task Watchdog Timer (TWDT) and reset the chip.",
+      "fix": "Call esp_task_wdt_reset() or vTaskDelay(1) in long loops. For long ISRs, disable TWDT or feed it.",
+      "severity": "medium"
+    }
+  ],
+  "power_optimization": [
+    {
+      "mode": "Active (WiFi TX)",
+      "current": "~310mA",
+      "notes": "Peak current during WiFi transmission"
+    },
+    {
+      "mode": "Active (CPU 240MHz)",
+      "current": "~60mA",
+      "notes": "Both cores running, no radio"
+    },
+    {
+      "mode": "Modem Sleep",
+      "current": "~20mA",
+      "notes": "CPU running, WiFi association maintained"
+    },
+    {
+      "mode": "Light Sleep",
+      "current": "~0.8mA",
+      "notes": "CPU paused, RAM retained, wake in ~1ms"
+    },
+    {
+      "mode": "Deep Sleep",
+      "current": "~10µA",
+      "notes": "Only RTC running, wake on timer/GPIO. RAM lost except RTC slow memory."
+    }
+  ],
+  "build_configs": {
+    "platformio_minimal": "[env:esp32-s3-devkitc-1]\nplatform = espressif32\nboard = esp32-s3-devkitc-1\nframework = arduino\nmonitor_speed = 115200\nupload_speed = 921600\nboard_build.flash_mode = qio\nboard_build.partitions = default_8MB.csv\nbuild_flags =\n    -D CORE_DEBUG_LEVEL=0\n    -D BOARD_HAS_PSRAM\n    -mfix-esp32-psram-cache-issue",
+    "idf_minimal": "idf.py set-target esp32s3\nidf.py menuconfig  # Enable PSRAM: Component config → ESP PSRAM\nidf.py build\nidf.py -p /dev/ttyACM0 flash monitor"
+  }
+}

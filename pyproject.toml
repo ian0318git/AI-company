@@ -1,0 +1,98 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ai-embedded-company"
+version = "0.1.0"
+description = "AI Embedded Systems Company — Turn Claude Code into your personal embedded + full-stack dev team. Any idea → working software."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "Ian", email = "ian@example.com"},
+]
+keywords = [
+    "claude-code",
+    "mcp",
+    "ai-agent",
+    "embedded-systems",
+    "esp32",
+    "iot",
+    "firmware",
+    "team-os",
+    "fastapi",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Embedded Systems",
+    "Topic :: Software Development :: Build Tools",
+]
+
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "fastmcp>=3.0",
+    "typer>=0.15",
+    "rich>=13.0",
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "aiosqlite>=0.20",
+    "sqlalchemy>=2.0",
+    "alembic>=1.14",
+    "anyio>=4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
+    "ruff>=0.8",
+    "mypy>=1.13",
+]
+full = [
+    "fastmcp>=3.0",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "websockets>=12.0",
+    "redis>=5.0",
+    "asyncpg>=0.30",
+    "psycopg2-binary>=2.9",
+    "alembic>=1.14",
+]
+
+[project.urls]
+Homepage = "https://github.com/ian0318git/AI-company"
+Repository = "https://github.com/ian0318git/AI-company"
+Issues = "https://github.com/ian0318git/AI-company/issues"
+
+[project.scripts]
+aiteam = "ai_embedded_company.cli.app:app"
+ai-embedded-company-serve = "ai_embedded_company.mcp.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_embedded_company"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true

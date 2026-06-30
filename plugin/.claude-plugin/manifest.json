@@ -1,0 +1,46 @@
+{
+  "name": "ai-embedded-company",
+  "version": "0.1.0",
+  "description": "AI Embedded Systems Company — Turn Claude Code into your personal embedded + full-stack dev team",
+  "author": "Ian",
+  "homepage": "https://github.com/ian0318git/AI-company",
+  "repository": "https://github.com/ian0318git/AI-company",
+  "license": "MIT",
+  "keywords": [
+    "embedded",
+    "esp32",
+    "m5stack",
+    "firmware",
+    "iot",
+    "fullstack",
+    "multi-agent",
+    "mcp"
+  ],
+  "install": {
+    "python": ">=3.11",
+    "scripts": ["install.py"]
+  },
+  "mcp": {
+    "name": "ai-embedded-company",
+    "command": "python",
+    "args": ["-m", "ai_embedded_company.mcp.server"]
+  },
+  "agents": {
+    "source": "plugin/agents",
+    "destination": "~/.claude/agents"
+  },
+  "hooks": {
+    "source": "src/ai_embedded_company/hooks",
+    "events": [
+      "SessionStart",
+      "SessionEnd",
+      "SubagentStart",
+      "SubagentStop",
+      "PreToolUse",
+      "PostToolUse",
+      "UserPromptSubmit",
+      "Stop",
+      "PreCompact"
+    ]
+  }
+}
