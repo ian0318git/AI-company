@@ -1,10 +1,10 @@
 # AI Embedded Systems Company — 專案規範與 AI 代理團隊設定
 
 ## 🛠️ 系統基礎設定 (System Constraints)
-- **測試指令**: `pytest` (從專案根目錄執行)
+- **測試指令**: `uv run pytest` (從專案根目錄執行)
 - **程式碼風格**: 著重異常處理 (Exception Handling) 與邊界條件
 - **Python 版本**: >= 3.11
-- **套件管理**: `pip install -e .` (editable install)
+- **套件管理**: `uv sync` (uv 環境管理)
 
 ## 🏗️ 專案架構
 

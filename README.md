@@ -6,6 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 
 ## 🎯 核心能力
 
@@ -23,14 +24,20 @@
 ### 安裝
 
 ```bash
-# 1. Clone
+# 1. 安裝 uv（如果還沒有）
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 2. Clone
 git clone https://github.com/ian0318git/AI-company.git
 cd AI-company
 
-# 2. Install
-python install.py
+# 3. 同步依賴
+uv sync
 
-# 3. Restart Claude Code
+# 4. 安裝到 Claude Code
+uv run python install.py
+
+# 5. 重啟 Claude Code
 ```
 
 ### 第一個專案
@@ -100,23 +107,23 @@ python install.py
 ## 🛠️ 開發
 
 ```bash
-# Editable install
-pip install -e ".[dev]"
+# 同步依賴（含 dev tools）
+uv sync
 
 # Run tests
-pytest
+uv run pytest
 
 # Lint
-ruff check src/ tests/
+uv run ruff check src/ tests/
 
 # Type check
-mypy src/ai_embedded_company/
+uv run mypy src/ai_embedded_company/
 
 # Start API server
-aiteam serve --reload
+uv run aiteam serve --reload
 
 # Start MCP server
-aiteam mcp
+uv run aiteam mcp
 ```
 
 ## 📄 License

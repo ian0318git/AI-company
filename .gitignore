@@ -49,5 +49,8 @@ Thumbs.db
 .claude/data/
 .claude/cache/
 
+# uv
+uv.lock
+
 # Alembic
 migrations/versions/*.pyc

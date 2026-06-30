@@ -2,8 +2,8 @@
 """AI Embedded Company — One-Click Installer.
 
 Installs the full system:
-  1. Checks Python >= 3.11, Node.js (optional)
-  2. Installs Python dependencies
+  1. Checks Python >= 3.11, uv, Node.js (optional)
+  2. Installs Python dependencies via uv
   3. Registers the MCP server globally
   4. Registers lifecycle hooks
   5. Copies agent templates to ~/.claude/agents/
@@ -253,13 +253,19 @@ def main():
     if not has_node:
         print("[WARN] Node.js not found — dashboard will not be built (optional)")
 
-    # Check pip
-    if not check_command("pip") and not check_command("pip3"):
-        print("[WARN] pip not found — dependency installation may fail")
-
-    print()
-    print("── Installing dependencies ──")
-    run([sys.executable, "-m", "pip", "install", "-e", ".", "--quiet"], cwd=project_root)
+    # Check uv
+    has_uv = check_command("uv")
+    if not has_uv:
+        print("[WARN] uv not found — install it first: curl -LsSf https://astral.sh/uv/install.sh | sh")
+        print("       Falling back to pip...")
+        run([sys.executable, "-m", "pip", "install", "-e", ".", "--quiet"], cwd=project_root)
+    else:
+        print()
+        print("── Installing dependencies (uv) ──")
+        result = run(["uv", "sync"], cwd=project_root)
+        if result.returncode != 0:
+            print("[WARN] uv sync failed, trying pip fallback...")
+            run([sys.executable, "-m", "pip", "install", "-e", ".", "--quiet"], cwd=project_root)
 
     print()
     print("── Registering MCP server ──")
