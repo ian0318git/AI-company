@@ -110,13 +110,19 @@ async def _auto_advance_if_all_done(session, project_id: str):
     if remaining.scalars().first() is not None:
         return  # Not all done yet
 
-    # Find pipeline for this project
+    # Find the active (non-done) pipeline for this project.
+    # A project may have multiple pipelines (e.g. re-runs); pick the one that
+    # is not yet at "done", or fall back to the most recently created one.
     pipe_result = await session.execute(
-        select(PipelineModel).where(PipelineModel.project_id == project_id)
+        select(PipelineModel)
+        .where(PipelineModel.project_id == project_id)
+        .order_by(PipelineModel.created_at.desc())
     )
-    pipeline = pipe_result.scalar_one_or_none()
-    if pipeline is None or pipeline.current_phase == "done":
-        return  # No pipeline or already done
+    pipelines = pipe_result.scalars().all()
+    # Prefer the active pipeline; if all are done there is nothing to advance
+    pipeline = next((p for p in pipelines if p.current_phase != "done"), None)
+    if pipeline is None:
+        return  # No active pipeline to advance
 
     # Advance to next phase
     phase_order = ["idea", "requirements", "design", "implementation", "testing", "deploy", "done"]
