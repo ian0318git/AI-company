@@ -131,7 +131,8 @@ export default function IdeaInbox() {
 
     const phasePct = totalPhases > 0 ? Math.round((currentIdx / totalPhases) * 100) : 0
     const taskPct = tasks.length > 0 ? Math.round((taskCounts.done / tasks.length) * 100) : 0
-    const overallPct = tasks.length > 0 ? Math.round(phasePct * 0.7 + taskPct * 0.3) : phasePct
+    const overallPct = wf.idea.status === 'done' ? 100
+      : tasks.length > 0 ? Math.round(phasePct * 0.7 + taskPct * 0.3) : phasePct
     const isComplete = overallPct >= 100
 
     return (

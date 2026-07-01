@@ -668,6 +668,14 @@ async def get_idea_workflow(
             "members": members,
         }
 
+    # Auto-sync: if pipeline done + all tasks done → mark idea done
+    if pipeline_model and pipeline_model.current_phase == "done" and task_list:
+        all_done = all(t.status == "done" for t in task_list)
+        if all_done and idea.status != "done":
+            idea.status = "done"
+            await session.commit()
+            await session.refresh(idea)
+
     # Agent workflow
     agent_workflow = None
     if pipeline_model and pipeline_model.pipeline_type in _AGENT_WORKFLOWS:

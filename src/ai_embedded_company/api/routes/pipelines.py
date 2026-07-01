@@ -98,7 +98,9 @@ async def advance_pipeline(
     pipeline_id: str,
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """Advance the pipeline to the next phase."""
+    """Advance the pipeline to the next phase. Auto-completes linked idea when done."""
+    from ai_embedded_company.storage.models import IdeaModel
+
     result = await session.execute(
         select(PipelineModel).where(PipelineModel.id == pipeline_id)
     )
@@ -113,6 +115,16 @@ async def advance_pipeline(
     new_phase = phase_order[next_idx]
 
     p.current_phase = new_phase
+
+    # Auto-complete linked idea when pipeline reaches "done"
+    if new_phase == "done" and p.idea_id:
+        idea_result = await session.execute(
+            select(IdeaModel).where(IdeaModel.id == p.idea_id)
+        )
+        idea = idea_result.scalar_one_or_none()
+        if idea and idea.status != "done":
+            idea.status = "done"
+
     await session.commit()
     await session.refresh(p)
 
