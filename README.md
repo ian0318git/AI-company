@@ -96,6 +96,47 @@ garden monitor"    embedded-firmware    with 8 tasks +      Watch agents work
                                                             100% 🎉
 ```
 
+## 🧬 Self-Evolution
+
+The system doesn't just execute — it **evolves**. Every failure, every research discovery, every agent interaction feeds back into the system, making it smarter over time.
+
+### Failure Alchemy
+
+When a task fails, the system doesn't just log it. It performs **alchemy** — turning failure into three kinds of gold:
+
+| Output | What it is | How it works |
+|--------|-----------|--------------|
+| 🛡️ **Antibody** | Prevention strategy | Stored in team memory. Prevents the same class of error from recurring. |
+| 💉 **Vaccine** | Pre-task warning | Injected before similar future tasks. "Before starting I2C driver work, verify timeout is set..." |
+| ⚡ **Catalyst** | Prompt improvement | Injected into agent system prompts. Changes *how* agents think about the problem class. |
+
+**Example**: An I2C bus hang under high temperature → antibody (add 50ms timeout + bus reset), vaccine (pre-flight checklist for all I2C drivers), catalyst (agent now audits every blocking call for timeout coverage).
+
+### Research Loop
+
+Research agents continuously scan for new technology, competitor moves, and emerging patterns:
+
+```
+Research Agent scans  →  Finding submitted  →  Agents debate relevance
+                                                    │
+                          Accepted findings ─────────┘
+                                │
+                          Auto-created as Ideas in Inbox
+                                │
+                          Refine → Pipeline → Tasks → Deliverables
+```
+
+The loop feeds the pipeline. Accepted research becomes real work — without a human typing a single prompt.
+
+### Evolution Dashboard
+
+Open **http://localhost:5173/evolution** to see:
+- **Health cards**: Active antibodies, vaccines, research conversion rate, system health
+- **Failure alchemy panel**: Every failure with its antibody, vaccine, and catalyst
+- **Research loop panel**: All findings with debate notes, acceptance flow, linked ideas
+
+> 💡 *"You leave at night. The system runs. You come back to antibodies that were born while you slept."*
+
 ## 🏗️ Architecture
 
 ```
