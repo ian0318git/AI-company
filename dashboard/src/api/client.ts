@@ -67,6 +67,7 @@ export const api = {
   pipelines: {
     list: (projectId?: string) => request<any[]>('GET', `/pipelines/${projectId ? `?project_id=${projectId}` : ''}`),
     get: (id: string) => request<any>('GET', `/pipelines/${id}`),
+    advance: (id: string) => request<any>('POST', `/pipelines/${id}/advance`),
   },
 }
 

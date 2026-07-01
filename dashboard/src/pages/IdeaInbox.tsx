@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   Lightbulb, Send, Loader2, AlertCircle, ChevronDown, ChevronUp,
   Sparkles, Play, CheckCircle2, Circle, Clock, Users, ListTodo,
+  ArrowRight, TrendingUp,
 } from 'lucide-react'
 import { api } from '../api/client'
 
@@ -173,6 +174,26 @@ export default function IdeaInbox() {
     finally { setStartingId(null) }
   }
 
+  const handleTaskToggle = async (ideaId: string, taskId: string, currentStatus: string) => {
+    const nextStatus = currentStatus === 'todo' ? 'in_progress'
+      : currentStatus === 'in_progress' ? 'done'
+      : 'todo'
+    try {
+      await api.tasks.updateStatus(taskId, nextStatus)
+      // Refresh workflow
+      const wf = await api.ideas.workflow(ideaId)
+      setWorkflows(prev => ({ ...prev, [ideaId]: wf }))
+    } catch { /* ignore */ }
+  }
+
+  const handleAdvancePhase = async (ideaId: string, pipelineId: string) => {
+    try {
+      await api.pipelines.advance(pipelineId)
+      const wf = await api.ideas.workflow(ideaId)
+      setWorkflows(prev => ({ ...prev, [ideaId]: wf }))
+    } catch { /* ignore */ }
+  }
+
   const handleToggleExpand = async (ideaId: string) => {
     if (expanded === ideaId) {
       setExpanded(null)
@@ -194,13 +215,58 @@ export default function IdeaInbox() {
     const currentIdx = pipeline
       ? PHASE_ORDER.indexOf(pipeline.current_phase)
       : -1
+    const totalPhases = pipeline?.steps.length || 1
 
     const taskCounts = { todo: 0, in_progress: 0, done: 0 }
     tasks.forEach(t => { if (t.status in taskCounts) taskCounts[t.status as keyof typeof taskCounts]++ })
 
+    // Overall progress: 70% pipeline + 30% tasks
+    const phasePct = totalPhases > 0 ? Math.round((currentIdx / totalPhases) * 100) : 0
+    const taskPct = tasks.length > 0 ? Math.round((taskCounts.done / tasks.length) * 100) : 0
+    const overallPct = tasks.length > 0
+      ? Math.round(phasePct * 0.7 + taskPct * 0.3)
+      : phasePct
+    const isComplete = overallPct >= 100
+
     return (
       <div className="border border-t-0 border-[hsl(var(--border))] rounded-b p-4 bg-white/[0.03] -mt-px space-y-4">
-        {/* Pipeline Progress */}
+        {/* ── Overall Progress ──────────────────────────────────── */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                Overall Progress
+              </span>
+              <div className="flex items-center gap-2">
+                <span className={`text-lg font-bold ${isComplete ? 'text-green-400' : 'text-blue-400'}`}>
+                  {overallPct}%
+                </span>
+                {isComplete && <CheckCircle2 className="w-4 h-4 text-green-400" />}
+              </div>
+            </div>
+            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  isComplete ? 'bg-green-500' : 'bg-gradient-to-r from-blue-500 to-purple-500'
+                }`}
+                style={{ width: `${overallPct}%` }}
+              />
+            </div>
+          </div>
+          {pipeline && (
+            <button
+              onClick={e => { e.stopPropagation(); handleAdvancePhase(wf.idea.id, pipeline.id) }}
+              disabled={currentIdx >= totalPhases - 1}
+              className="flex items-center gap-1 px-2 py-1 bg-blue-600/50 hover:bg-blue-500 disabled:opacity-30 rounded text-[10px] font-medium transition-colors shrink-0"
+              title="Advance to next phase"
+            >
+              <ArrowRight className="w-3 h-3" />
+              Next Phase
+            </button>
+          )}
+        </div>
+
+        {/* ── Pipeline Progress ─────────────────────────────────── */}
         {pipeline && (
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -208,7 +274,7 @@ export default function IdeaInbox() {
                 Pipeline: {pipelineLabels[pipeline.pipeline_type] || pipeline.pipeline_type}
               </span>
               <span className="text-xs text-gray-500">
-                {pipeline.current_phase.toUpperCase()}
+                Phase {currentIdx + 1}/{totalPhases}: {pipeline.current_phase.toUpperCase()}
               </span>
             </div>
             <div className="flex gap-1">
@@ -216,7 +282,6 @@ export default function IdeaInbox() {
                 const idx = PHASE_ORDER.indexOf(step.phase)
                 const isDone = idx < currentIdx
                 const isCurrent = idx === currentIdx
-                const isPending = idx > currentIdx
                 return (
                   <div key={i} className="flex-1 group relative">
                     <div
@@ -242,31 +307,46 @@ export default function IdeaInbox() {
                 )
               })}
             </div>
+            {currentIdx >= totalPhases - 1 && (
+              <p className="text-xs text-green-400 mt-2 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> All phases complete — ready to deploy!
+              </p>
+            )}
           </div>
         )}
 
-        {/* Tasks + Team side by side */}
+        {/* ── Tasks + Team ───────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-3">
-          {/* Tasks */}
+          {/* Tasks — clickable to toggle */}
           <div>
             <div className="flex items-center gap-1.5 mb-2">
               <ListTodo className="w-3.5 h-3.5 text-gray-400" />
               <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
                 Tasks ({taskCounts.done}/{tasks.length})
               </span>
+              {tasks.length > 0 && (
+                <span className="text-[10px] text-gray-500 ml-auto">
+                  click to cycle
+                </span>
+              )}
             </div>
             {tasks.length === 0 ? (
               <p className="text-xs text-gray-500">No tasks yet</p>
             ) : (
               <ul className="space-y-1">
                 {tasks.map(task => (
-                  <li key={task.id} className="flex items-center gap-1.5 text-xs">
+                  <li
+                    key={task.id}
+                    onClick={e => { e.stopPropagation(); handleTaskToggle(wf.idea.id, task.id, task.status) }}
+                    className="flex items-center gap-1.5 text-xs cursor-pointer hover:bg-white/5 rounded px-1 py-0.5 transition-colors group"
+                    title="Click to toggle: todo → in_progress → done → todo"
+                  >
                     {task.status === 'done' ? (
                       <CheckCircle2 className="w-3 h-3 text-green-400 shrink-0" />
                     ) : task.status === 'in_progress' ? (
                       <Clock className="w-3 h-3 text-blue-400 shrink-0" />
                     ) : (
-                      <Circle className="w-3 h-3 text-gray-600 shrink-0" />
+                      <Circle className="w-3 h-3 text-gray-600 group-hover:text-gray-400 shrink-0 transition-colors" />
                     )}
                     <span className={`truncate ${task.status === 'done' ? 'text-gray-500 line-through' : 'text-gray-300'}`}>
                       {task.title}
