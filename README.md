@@ -4,6 +4,25 @@
 
 Any idea → working software/firmware.
 
+## 👑 Team Structure
+
+```
+Chairman (You)  →  CEO (Claude AI)  →  18 Specialized Agents
+    🧑‍💼                  🤖                   👥
+ Set direction     Autonomous execution    Write firmware,
+ Approve strategy  Task scheduling         design hardware,
+ Final decisions   Pipeline management     review code, test,
+                   Research scanning       deploy, document
+```
+
+| Role | Who | Responsibility |
+|------|-----|---------------|
+| 🧑‍💼 **Chairman** | **You** | Set the vision. Approve the big decisions. The system works for you. |
+| 🤖 **CEO** | **Claude AI** | Runs the company 24/7. Picks up tasks, manages pipelines, scans for new tech. Zero prompts needed. |
+| 👥 **18 Agents** | Specialized AI roles | Firmware, hardware, Linux, IoT, frontend, backend, DevOps, security, QA, research... |
+
+> 💡 *You're not the operator. You're the owner. The AI is your CEO.*
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)

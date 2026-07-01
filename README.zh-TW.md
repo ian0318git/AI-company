@@ -4,6 +4,25 @@
 
 任何腦中想法 → 實際運行的軟體/韌體。
 
+## 👑 團隊架構
+
+```
+董事長（你）  →  CEO（Claude AI）  →  18 個專業 Agent
+    🧑‍💼                  🤖                   👥
+ 設定方向           自主執行              寫韌體、設計硬體
+ 批准策略           任務排程              審查程式碼、測試
+ 最終決策           管線管理              部署、撰寫文件
+                   研究掃描
+```
+
+| 角色 | 誰 | 職責 |
+|------|-----|------|
+| 🧑‍💼 **董事長** | **你** | 設定願景、批准重大決策。系統為你工作。 |
+| 🤖 **CEO** | **Claude AI** | 24/7 運作整間公司。接手任務、管理管線、掃描新技術。不需任何提示。 |
+| 👥 **18 個 Agent** | 專業 AI 角色 | 韌體、硬體、Linux、IoT、前端、後端、DevOps、安全、QA、研究... |
+
+> 💡 *你不是操作員，你是老闆。AI 是你的 CEO。*
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
