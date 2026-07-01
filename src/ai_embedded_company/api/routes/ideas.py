@@ -128,6 +128,266 @@ _PIPELINE_DEFS: dict[str, dict] = {
 }
 
 
+# ── Agent workflow definitions (detailed execution plan per pipeline) ──────────
+
+_AGENT_WORKFLOWS: dict[str, list[dict]] = {
+    "research-spike": [
+        {
+            "id": "r1", "agent": "idea-refiner", "title": "Scope definition", "phase": "idea",
+            "description": "Analyzes the raw idea, identifies knowledge gaps, defines research questions and scope boundaries.",
+            "inputs": ["Raw idea description", "User context"],
+            "outputs": ["Research scope document", "Key questions list"],
+            "depends_on": [], "parallel_group": None,
+        },
+        {
+            "id": "r2", "agent": "tech-lead", "title": "Source identification", "phase": "requirements",
+            "description": "Identifies academic databases, industry reports, market data sources. Defines search methodology and quality criteria.",
+            "inputs": ["Research scope document"],
+            "outputs": ["Source inventory", "Methodology plan"],
+            "depends_on": ["r1"], "parallel_group": None,
+        },
+        {
+            "id": "r3a", "agent": "technical-writer", "title": "Report structure design", "phase": "design",
+            "description": "Designs the report outline, section hierarchy, and key arguments flow.",
+            "inputs": ["Methodology plan"],
+            "outputs": ["Report outline", "Section templates"],
+            "depends_on": ["r2"], "parallel_group": "design",
+        },
+        {
+            "id": "r3b", "agent": "project-manager", "title": "Timeline & milestones", "phase": "design",
+            "description": "Sets deliverable timeline, checkpoints, and review gates.",
+            "inputs": ["Research scope document"],
+            "outputs": ["Project timeline", "Milestone tracker"],
+            "depends_on": ["r1"], "parallel_group": "design",
+        },
+        {
+            "id": "r4a", "agent": "technical-writer", "title": "Data gathering & drafting", "phase": "implementation",
+            "description": "Searches academic databases, industry sources. Compiles statistics, trends, and expert opinions into draft sections.",
+            "inputs": ["Source inventory", "Report outline"],
+            "outputs": ["Draft report sections", "Data tables"],
+            "depends_on": ["r3a"], "parallel_group": "write",
+        },
+        {
+            "id": "r4b", "agent": "idea-refiner", "title": "Competitive context research", "phase": "implementation",
+            "description": "Researches parallel industry movements, competitor analyses, and adjacent market data for richer context.",
+            "inputs": ["Research scope document"],
+            "outputs": ["Context briefing", "Competitive landscape notes"],
+            "depends_on": ["r1"], "parallel_group": "write",
+        },
+        {
+            "id": "r5a", "agent": "qa-engineer", "title": "Fact-checking & source verification", "phase": "testing",
+            "description": "Verifies every claim against original sources. Checks data accuracy, citation completeness, and logical consistency.",
+            "inputs": ["Draft report sections", "Source inventory"],
+            "outputs": ["Verification report", "Correction annotations"],
+            "depends_on": ["r4a", "r4b"], "parallel_group": "verify",
+        },
+        {
+            "id": "r5b", "agent": "tech-lead", "title": "Technical accuracy review", "phase": "testing",
+            "description": "Reviews all technical claims. Ensures embedded/firmware domain terminology and analysis are correct.",
+            "inputs": ["Draft report sections"],
+            "outputs": ["Technical review notes", "Accuracy sign-off"],
+            "depends_on": ["r4a", "r4b"], "parallel_group": "verify",
+        },
+        {
+            "id": "r5c", "agent": "project-manager", "title": "Stakeholder pre-read", "phase": "testing",
+            "description": "Reviews draft for stakeholder readiness. Checks executive summary impact and recommendation clarity.",
+            "inputs": ["Draft report sections"],
+            "outputs": ["Stakeholder feedback", "Presentation readiness score"],
+            "depends_on": ["r4a"], "parallel_group": "verify",
+        },
+        {
+            "id": "r6", "agent": "technical-writer", "title": "Final compilation & polish", "phase": "deploy",
+            "description": "Incorporates all feedback. Finalizes report, creates executive presentation. Delivers final package.",
+            "inputs": ["Verification report", "Technical review notes", "Stakeholder feedback"],
+            "outputs": ["Final report (.md)", "Executive presentation", "Source bibliography"],
+            "depends_on": ["r5a", "r5b", "r5c"], "parallel_group": None,
+        },
+    ],
+    "embedded-firmware": [
+        {
+            "id": "e1", "agent": "embedded-hardware-engineer", "title": "Pin planning & feasibility", "phase": "idea",
+            "description": "Plans GPIO assignments, checks pin conflicts, verifies voltage levels, creates pinout diagram.",
+            "inputs": ["Board specs", "Peripheral requirements"],
+            "outputs": ["Pinout diagram", "Feasibility report"],
+            "depends_on": [], "parallel_group": None,
+        },
+        {
+            "id": "e2a", "agent": "embedded-firmware-engineer", "title": "HAL layer design", "phase": "requirements",
+            "description": "Designs hardware abstraction layer interfaces for all peripherals (I2C, SPI, UART, GPIO, ADC).",
+            "inputs": ["Pinout diagram"],
+            "outputs": ["HAL interface headers", "Driver specifications"],
+            "depends_on": ["e1"], "parallel_group": "hal",
+        },
+        {
+            "id": "e2b", "agent": "embedded-sensor-driver-dev", "title": "Sensor driver prototyping", "phase": "requirements",
+            "description": "Prototypes sensor-specific drivers. Tests communication protocols and data readout.",
+            "inputs": ["Pinout diagram", "Sensor datasheets"],
+            "outputs": ["Sensor driver prototypes", "Test readings"],
+            "depends_on": ["e1"], "parallel_group": "hal",
+        },
+        {
+            "id": "e3", "agent": "embedded-firmware-engineer", "title": "Business logic implementation", "phase": "design",
+            "description": "Implements core firmware logic: state machines, data processing, control algorithms.",
+            "inputs": ["HAL interface headers", "Sensor driver prototypes"],
+            "outputs": ["Core firmware modules", "State machine diagrams"],
+            "depends_on": ["e2a", "e2b"], "parallel_group": None,
+        },
+        {
+            "id": "e4a", "agent": "embedded-testing-engineer", "title": "Unit & integration testing", "phase": "testing",
+            "description": "Writes and runs unit tests for all modules. Integration tests on target hardware.",
+            "inputs": ["Core firmware modules"],
+            "outputs": ["Test reports", "Coverage data", "Bug tickets"],
+            "depends_on": ["e3"], "parallel_group": "test",
+        },
+        {
+            "id": "e4b", "agent": "embedded-iot-engineer", "title": "WiFi/Cloud integration", "phase": "testing",
+            "description": "Implements WiFi connectivity, MQTT/HTTP data upload, OTA update capability.",
+            "inputs": ["Core firmware modules"],
+            "outputs": ["Connectivity module", "Cloud dashboard config"],
+            "depends_on": ["e3"], "parallel_group": "test",
+        },
+        {
+            "id": "e5", "agent": "embedded-firmware-engineer", "title": "Memory & power optimization", "phase": "implementation",
+            "description": "Profiles RAM/Flash usage. Optimizes power consumption. Implements deep sleep modes.",
+            "inputs": ["Test reports", "Core firmware modules"],
+            "outputs": ["Optimized firmware build", "Power profile report"],
+            "depends_on": ["e4a", "e4b"], "parallel_group": None,
+        },
+        {
+            "id": "e6", "agent": "embedded-firmware-engineer", "title": "Flash & device validation", "phase": "deploy",
+            "description": "Compiles final binary. Flashes to target device. Runs validation suite on hardware.",
+            "inputs": ["Optimized firmware build"],
+            "outputs": ["Production binary", "Validation report"],
+            "depends_on": ["e5"], "parallel_group": None,
+        },
+    ],
+    "web-fullstack": [
+        {
+            "id": "w1", "agent": "frontend-developer", "title": "UI/UX wireframes", "phase": "idea",
+            "description": "Designs user flows, wireframes, and component hierarchy.",
+            "inputs": ["Product requirements"],
+            "outputs": ["Wireframes", "Component tree"],
+            "depends_on": [], "parallel_group": None,
+        },
+        {
+            "id": "w2a", "agent": "backend-developer", "title": "API design & data model", "phase": "requirements",
+            "description": "Designs REST API contracts, database schema, and data flow.",
+            "inputs": ["Product requirements"],
+            "outputs": ["OpenAPI spec", "DB schema"],
+            "depends_on": ["w1"], "parallel_group": "design",
+        },
+        {
+            "id": "w2b", "agent": "software-architect", "title": "System architecture", "phase": "requirements",
+            "description": "Defines system architecture, technology stack, deployment topology.",
+            "inputs": ["Product requirements", "Wireframes"],
+            "outputs": ["Architecture doc", "Tech stack decisions"],
+            "depends_on": ["w1"], "parallel_group": "design",
+        },
+        {
+            "id": "w3a", "agent": "frontend-developer", "title": "Frontend implementation", "phase": "implementation",
+            "description": "Builds React components, pages, routing, and state management.",
+            "inputs": ["Wireframes", "OpenAPI spec"],
+            "outputs": ["Frontend build", "Component library"],
+            "depends_on": ["w2a", "w2b"], "parallel_group": "build",
+        },
+        {
+            "id": "w3b", "agent": "backend-developer", "title": "Backend implementation", "phase": "implementation",
+            "description": "Implements API endpoints, database layer, authentication, and business logic.",
+            "inputs": ["OpenAPI spec", "DB schema"],
+            "outputs": ["API server", "DB migrations"],
+            "depends_on": ["w2a", "w2b"], "parallel_group": "build",
+        },
+        {
+            "id": "w4", "agent": "qa-engineer", "title": "Integration & E2E testing", "phase": "testing",
+            "description": "Runs integration tests, E2E flows, API contract tests, and performance benchmarks.",
+            "inputs": ["Frontend build", "API server"],
+            "outputs": ["Test report", "Bug list", "Perf benchmarks"],
+            "depends_on": ["w3a", "w3b"], "parallel_group": None,
+        },
+        {
+            "id": "w5", "agent": "devops-engineer", "title": "CI/CD & deploy", "phase": "deploy",
+            "description": "Sets up CI/CD pipeline, containerizes app, deploys to staging/production.",
+            "inputs": ["Frontend build", "API server", "Test report"],
+            "outputs": ["Deployed application", "CI/CD pipeline", "Monitoring setup"],
+            "depends_on": ["w4"], "parallel_group": None,
+        },
+    ],
+    "quick-prototype": [
+        {
+            "id": "q1", "agent": "rapid-prototyper", "title": "Scope MVP features", "phase": "idea",
+            "description": "Identifies the minimum viable feature set. Cuts scope aggressively.",
+            "inputs": ["Idea description"],
+            "outputs": ["MVP scope doc"],
+            "depends_on": [], "parallel_group": None,
+        },
+        {
+            "id": "q2", "agent": "rapid-prototyper", "title": "Build core functionality", "phase": "implementation",
+            "description": "Builds working prototype with the fastest possible path. No tests, no polish.",
+            "inputs": ["MVP scope doc"],
+            "outputs": ["Working prototype"],
+            "depends_on": ["q1"], "parallel_group": None,
+        },
+        {
+            "id": "q3", "agent": "qa-engineer", "title": "Smoke test", "phase": "testing",
+            "description": "Quick smoke test of critical paths only. Flags showstopper bugs.",
+            "inputs": ["Working prototype"],
+            "outputs": ["Smoke test results", "Critical bugs"],
+            "depends_on": ["q2"], "parallel_group": None,
+        },
+        {
+            "id": "q4", "agent": "rapid-prototyper", "title": "Demo preparation", "phase": "deploy",
+            "description": "Fixes critical bugs, prepares demo script, shares prototype with stakeholders.",
+            "inputs": ["Smoke test results"],
+            "outputs": ["Demo-ready prototype", "Demo script"],
+            "depends_on": ["q3"], "parallel_group": None,
+        },
+    ],
+    "embedded-linux": [
+        {
+            "id": "l1", "agent": "embedded-linux-engineer", "title": "Kernel config & BSP", "phase": "idea",
+            "description": "Configures Linux kernel for target SoC. Creates board support package.",
+            "inputs": ["Board specs", "SoC datasheet"],
+            "outputs": ["Kernel .config", "Device tree", "BSP"],
+            "depends_on": [], "parallel_group": None,
+        },
+        {
+            "id": "l2a", "agent": "embedded-linux-engineer", "title": "Driver development", "phase": "design",
+            "description": "Develops kernel drivers for target hardware peripherals.",
+            "inputs": ["Device tree", "BSP"],
+            "outputs": ["Kernel drivers", "Driver docs"],
+            "depends_on": ["l1"], "parallel_group": "dev",
+        },
+        {
+            "id": "l2b", "agent": "software-architect", "title": "Userspace architecture", "phase": "design",
+            "description": "Designs userspace application architecture, IPC, and service layout.",
+            "inputs": ["Board specs"],
+            "outputs": ["App architecture doc"],
+            "depends_on": ["l1"], "parallel_group": "dev",
+        },
+        {
+            "id": "l3", "agent": "embedded-linux-engineer", "title": "Application development", "phase": "implementation",
+            "description": "Implements userspace applications and services.",
+            "inputs": ["Kernel drivers", "App architecture doc"],
+            "outputs": ["Application binaries", "Startup scripts"],
+            "depends_on": ["l2a", "l2b"], "parallel_group": None,
+        },
+        {
+            "id": "l4", "agent": "embedded-testing-engineer", "title": "Cross-compile & integration test", "phase": "testing",
+            "description": "Cross-compiles for target architecture. Runs integration tests on hardware.",
+            "inputs": ["Application binaries", "Kernel drivers"],
+            "outputs": ["Test report", "Root filesystem"],
+            "depends_on": ["l3"], "parallel_group": None,
+        },
+        {
+            "id": "l5", "agent": "devops-engineer", "title": "Image build & release", "phase": "deploy",
+            "description": "Builds final system image (Buildroot/Yocto). Creates release artifacts.",
+            "inputs": ["Root filesystem", "Test report"],
+            "outputs": ["System image", "Release notes", "SDK"],
+            "depends_on": ["l4"], "parallel_group": None,
+        },
+    ],
+}
+
 # ── routes ─────────────────────────────────────────────────────────────────────
 
 
@@ -408,11 +668,30 @@ async def get_idea_workflow(
             "members": members,
         }
 
+    # Agent workflow
+    agent_workflow = None
+    if pipeline_model and pipeline_model.pipeline_type in _AGENT_WORKFLOWS:
+        agent_workflow = _AGENT_WORKFLOWS[pipeline_model.pipeline_type]
+        # Mark action status based on pipeline phase
+        current_phase = pipeline_model.current_phase
+        phase_order = ["idea", "requirements", "design", "implementation", "testing", "deploy", "done"]
+        current_phase_idx = phase_order.index(current_phase) if current_phase in phase_order else 0
+
+        for action in agent_workflow:
+            action_phase_idx = phase_order.index(action.get("phase", "idea")) if action.get("phase", "idea") in phase_order else 0
+            if action_phase_idx < current_phase_idx:
+                action["status"] = "done"
+            elif action_phase_idx == current_phase_idx:
+                action["status"] = "in_progress" if current_phase != "done" else "done"
+            else:
+                action["status"] = "pending"
+
     return {
         "idea": _model_to_idea(idea).model_dump(),
         "pipeline": pipeline_data,
         "tasks": tasks_data,
         "team": team_data,
+        "agent_workflow": agent_workflow,
     }
 
 
