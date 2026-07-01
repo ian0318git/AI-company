@@ -1,113 +1,117 @@
-# AI Embedded Systems Company
+# AI Company
 
 **Turn Claude Code into your personal embedded + full-stack dev team.**
 
-任何腦中想法 → 實際運行的軟體/韌體。
+Any idea → working software/firmware.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![Lang](https://img.shields.io/badge/lang-English-blue)](README.md)
+[![Lang](https://img.shields.io/badge/語言-繁體中文-green)](README.zh-TW.md)
 
-## 🎯 核心能力
+> 📖 **Read this in:** [繁體中文](README.zh-TW.md)
 
-| 能力 | 說明 |
-|------|------|
-| 🧠 **Idea → Software** | 從模糊想法到部署的完整 Pipeline |
-| 🔌 **硬體橋接** | 自動偵測開發板、燒錄韌體、監聽序列埠 |
-| 👥 **18 個 AI Agent** | 嵌入式 × 6 + 軟體 × 5 + 管理 × 5 + 特殊 × 2 |
-| 📋 **5 種 Pipeline** | Firmware / Linux / Fullstack / Prototype / Research |
-| 💾 **知識庫** | M5Stack、ESP32 腳位定義與程式碼模式內建 |
-| 🔒 **零額外成本** | 無外部 API 呼叫，完全本地運作 |
+## 🎯 Core Capabilities
 
-## 🚀 快速開始
+| Capability | Description |
+|------------|-------------|
+| 🧠 **Idea → Software** | Complete pipeline from vague idea to deployment |
+| 🔌 **Hardware Bridge** | Auto-detect dev boards, flash firmware, monitor serial |
+| 👥 **18 AI Agents** | Embedded × 6 + Software × 5 + Management × 5 + Special × 2 |
+| 📋 **5 Pipelines** | Firmware / Linux / Fullstack / Prototype / Research |
+| 💾 **Knowledge Base** | M5Stack, ESP32 pin definitions and code patterns built-in |
+| 🔒 **Zero External Cost** | No external API calls, fully local operation |
 
-### 安裝
+## 🚀 Quick Start
+
+### Installation
 
 ```bash
-# 1. 安裝 uv（如果還沒有）
+# 1. Install uv (if you haven't already)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 2. Clone
 git clone https://github.com/ian0318git/AI-company.git
 cd AI-company
 
-# 3. 同步依賴
+# 3. Sync dependencies
 uv sync
 
-# 4. 安裝到 Claude Code
+# 4. Install into Claude Code
 uv run python install.py
 
-# 5. 重啟 Claude Code
+# 5. Restart Claude Code
 ```
 
-### 第一個專案
+### Your First Project
 
-在 Claude Code 中直接說：
+Just say this inside Claude Code:
 
-> "我想做一個 M5Stack Core S3 的溫濕度監測器，會在 LCD 上顯示數值，也能透過 WiFi 上傳到雲端"
+> "I want to build a temperature and humidity monitor for M5Stack Core S3 that displays readings on the LCD and uploads data to the cloud via WiFi"
 
-系統會自動：
-1. **Idea Refiner** 精煉需求
-2. **Pipeline** 建立 `embedded-firmware` 流程
-3. **Firmware Engineer** 撰寫 ESP32-S3 程式碼
-4. **Hardware Engineer** 規劃腳位
-5. 編譯 → 燒錄到你的 M5Stack
+The system will automatically:
+1. **Idea Refiner** — Refine the requirements
+2. **Pipeline** — Create an `embedded-firmware` workflow
+3. **Firmware Engineer** — Write ESP32-S3 code
+4. **Hardware Engineer** — Plan pin assignments
+5. Compile → Flash to your M5Stack
 
-## 🏗️ 架構
+## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────┐
-│  Dashboard (React 19 + Shadcn UI)       │  可視化
+│  Dashboard (React 19 + Shadcn UI)       │  Visualization
 ├─────────────────────────────────────────┤
-│  REST API (FastAPI) + CLI (Typer)       │  控制層
+│  REST API (FastAPI) + CLI (Typer)       │  Control Layer
 ├─────────────────────────────────────────┤
-│  Orchestrator (LangGraph)               │  編排層
+│  Orchestrator (LangGraph)               │  Orchestration
 ├─────────────────────────────────────────┤
-│  Memory & Knowledge (SQLite)            │  記憶層
+│  Memory & Knowledge (SQLite)            │  Memory Layer
 ├─────────────────────────────────────────┤
-│  MCP Server (FastMCP) — 107 tools      │  工具層
+│  MCP Server (FastMCP) — 107 tools      │  Tool Layer
 └─────────────────────────────────────────┘
 ```
 
-## 📦 支援硬體
+## 📦 Supported Hardware
 
-| 開發板 | 晶片 | 狀態 |
-|--------|------|------|
-| M5Stack Core S3 | ESP32-S3 | ✅ 深度整合 |
-| M5Stack Core2 | ESP32 | 🔄 計畫中 |
-| ESP32-DevKit | ESP32 | ✅ 支援 |
-| Raspberry Pi Pico | RP2040 | 🔄 計畫中 |
-| STM32F4 Discovery | STM32F407 | 🔄 計畫中 |
-| nRF52840 DK | nRF52840 | 🔄 計畫中 |
+| Dev Board | Chip | Status |
+|-----------|------|--------|
+| M5Stack Core S3 | ESP32-S3 | ✅ Deep Integration |
+| M5Stack Core2 | ESP32 | 🔄 Planned |
+| ESP32-DevKit | ESP32 | ✅ Supported |
+| Raspberry Pi Pico | RP2040 | 🔄 Planned |
+| STM32F4 Discovery | STM32F407 | 🔄 Planned |
+| nRF52840 DK | nRF52840 | 🔄 Planned |
 
-## 🤖 Agent 團隊
+## 🤖 Agent Team
 
-**嵌入式工程 (6)**:
+**Embedded Engineering (6)**:
 `firmware-engineer` · `hardware-engineer` · `linux-engineer` · `iot-engineer` · `sensor-driver-dev` · `testing-engineer`
 
-**軟體工程 (5)**:
+**Software Engineering (5)**:
 `software-architect` · `backend-developer` · `frontend-developer` · `fullstack-developer` · `devops-engineer`
 
-**管理與品質 (5)**:
+**Management & Quality (5)**:
 `tech-lead` · `project-manager` · `code-reviewer` · `qa-engineer` · `technical-writer`
 
-**特殊 (2)**:
+**Special (2)**:
 `idea-refiner` · `rapid-prototyper`
 
-## 📋 Pipeline 模板
+## 📋 Pipeline Templates
 
-| 模板 | 流程 |
-|------|------|
-| `embedded-firmware` | Idea → 腳位規劃 → HAL → 業務邏輯 → 測試 → 燒錄 |
-| `embedded-linux` | Idea → 系統設計 → Driver/App → 交叉編譯 → 測試 |
-| `web-fullstack` | Idea → UI/UX → Frontend → Backend → 部署 |
-| `quick-prototype` | Idea → MVP → 迭代 |
-| `research-spike` | 技術調研 → 可行性報告 |
+| Template | Workflow |
+|----------|----------|
+| `embedded-firmware` | Idea → Pin Planning → HAL → Business Logic → Test → Flash |
+| `embedded-linux` | Idea → System Design → Driver/App → Cross-compile → Test |
+| `web-fullstack` | Idea → UI/UX → Frontend → Backend → Deploy |
+| `quick-prototype` | Idea → MVP → Iterate |
+| `research-spike` | Technology Research → Feasibility Report |
 
-## 🛠️ 開發
+## 🛠️ Development
 
 ```bash
-# 同步依賴（含 dev tools）
+# Sync dependencies (including dev tools)
 uv sync
 
 # Run tests
@@ -128,4 +132,4 @@ uv run aiteam mcp
 
 ## 📄 License
 
-MIT — 做任何你想做的事，打造你自己的 AI 公司。
+MIT — Do whatever you want. Build your own AI company.
