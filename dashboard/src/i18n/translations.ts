@@ -49,6 +49,7 @@ export const t: Record<Lang, Record<string, string>> = {
     'wf.noTasks': 'No tasks yet',
     'wf.noTeam': 'No team assigned',
     'wf.deliverables': 'Deliverables',
+    'wf.noDeliverables': 'No deliverables',
     'wf.view': 'View',
 
     // Status labels
@@ -146,6 +147,7 @@ export const t: Record<Lang, Record<string, string>> = {
     'wf.noTasks': '尚無任務',
     'wf.noTeam': '尚未分配團隊',
     'wf.deliverables': '交付物',
+    'wf.noDeliverables': '缺交付物',
     'wf.view': '檢視',
 
     // Status labels

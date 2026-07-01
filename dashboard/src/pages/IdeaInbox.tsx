@@ -132,7 +132,9 @@ export default function IdeaInbox() {
 
     const phasePct = totalPhases > 0 ? Math.round((currentIdx / totalPhases) * 100) : 0
     const taskPct = tasks.length > 0 ? Math.round((taskCounts.done / tasks.length) * 100) : 0
-    const overallPct = wf.idea.status === 'done' ? 100
+    const hasDeliverables = (deliverables[wf.idea.id]?.length || 0) > 0
+    const overallPct = wf.idea.status === 'done'
+      ? (hasDeliverables ? 100 : 95)
       : tasks.length > 0 ? Math.round(phasePct * 0.7 + taskPct * 0.3) : phasePct
     const isComplete = overallPct >= 100
 
@@ -482,7 +484,12 @@ export default function IdeaInbox() {
                       {idea.suggested_pipeline && (
                         <span className="text-sm text-blue-400">{tr(`pipeline.${idea.suggested_pipeline}`) || idea.suggested_pipeline}</span>
                       )}
-                      {wf?.pipeline && <span className="text-sm text-green-400 ml-auto">{tr('wf.phase')}: {wf.pipeline.current_phase}</span>}
+                      {wf?.pipeline && wf.pipeline.current_phase === 'done' && (deliverables[idea.id]?.length || 0) === 0 && (
+                        <span className="text-sm text-yellow-400 ml-auto">⚠ {tr('wf.noDeliverables')}</span>
+                      )}
+                      {wf?.pipeline && (!wf.pipeline || wf.pipeline.current_phase !== 'done' || (deliverables[idea.id]?.length || 0) > 0) && wf.pipeline && (
+                        <span className="text-sm text-green-400 ml-auto">{tr('wf.phase')}: {wf.pipeline.current_phase}</span>
+                      )}
                       <span className="text-sm text-gray-500 ml-auto">
                         {expanded === idea.id ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                       </span>
