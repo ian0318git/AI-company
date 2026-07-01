@@ -39,6 +39,7 @@ export const t: Record<Lang, Record<string, string>> = {
     // Workflow
     'wf.overallProgress': 'Overall Progress',
     'wf.nextPhase': 'Next Phase',
+    'wf.refresh': 'Refresh',
     'wf.pipeline': 'Pipeline',
     'wf.phase': 'Phase',
     'wf.tasks': 'Tasks',
@@ -142,6 +143,7 @@ export const t: Record<Lang, Record<string, string>> = {
     // Workflow
     'wf.overallProgress': '整體進度',
     'wf.nextPhase': '下一階段',
+    'wf.refresh': '更新狀態',
     'wf.pipeline': '管線',
     'wf.phase': '階段',
     'wf.tasks': '任務',

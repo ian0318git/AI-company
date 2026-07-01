@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   Lightbulb, Send, Loader2, AlertCircle, ChevronDown, ChevronUp,
   Sparkles, Play, CheckCircle2, Circle, Clock, Users, ListTodo,
-  ArrowRight, TrendingUp, FileText, Download,
+  RefreshCw, TrendingUp, FileText, Download,
 } from 'lucide-react'
 import { api } from '../api/client'
 import { useI18n } from '../i18n/context'
@@ -157,11 +157,14 @@ export default function IdeaInbox() {
           </div>
           {pipeline && (
             <button
-              onClick={e => { e.stopPropagation(); handleAdvancePhase(wf.idea.id, pipeline.id) }}
-              disabled={pipeline.current_phase === 'done'}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/50 hover:bg-blue-500 disabled:opacity-30 rounded text-sm font-medium transition-colors shrink-0"
+              onClick={async e => {
+                e.stopPropagation()
+                try { const updated = await api.ideas.workflow(wf.idea.id); setWorkflows(p => ({ ...p, [wf.idea.id]: updated })) } catch {}
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded text-sm text-gray-400 transition-colors shrink-0"
+              title="Refresh workflow state from server"
             >
-              <ArrowRight className="w-4 h-4" />{tr('wf.nextPhase')}
+              <RefreshCw className="w-4 h-4" />{tr('wf.refresh')}
             </button>
           )}
         </div>
