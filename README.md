@@ -59,7 +59,7 @@ The system will automatically:
 
 ## 🖥️ Dashboard
 
-Manage projects, tasks, and pipelines through a visual web interface powered by React 19.
+A visual command center for your AI engineering team — track every idea from conception to delivery.
 
 ```bash
 # Option 1: Via CLI (recommended)
@@ -69,7 +69,32 @@ uv run aiteam dashboard
 cd dashboard && npm run dev -- --host 0.0.0.0
 ```
 
-Then open **http://localhost:5173** in your browser. The dashboard proxies API calls to the backend at `localhost:8765`.
+Open **http://localhost:5173** — the dashboard proxies API calls to the backend at `localhost:8765`.
+
+### What makes it powerful
+
+| Feature | What you get |
+|---------|-------------|
+| 🧠 **Idea Inbox** | Submit ideas in plain language. One click to refine, one click to spin up a full engineering pipeline. |
+| 📊 **Progress Dashboard** | Live percentage counter — pipeline phases × task completion. Watch ideas go from 0% → 100%. |
+| 🔀 **Agent Workflow Visualization** | See exactly which agents work on what, who hands off to whom, and which steps run in parallel — rendered as a color-coded DAG. |
+| ✅ **Interactive Task Board** | Click any task to cycle its status (todo → in progress → done). Each task shows its assigned agent. |
+| 🏗️ **Pipeline Tracking** | 6-phase progress bar per pipeline. Advance phases with one click. Auto-completion detection. |
+| 👥 **Team Roster** | See the assembled agent team for each project — who's idle, who's working. |
+| 📦 **Deliverables** | Actual output files attached to each idea. Firmware source code, research reports, pinout diagrams — rendered as styled HTML for comfortable reading. |
+| 🌐 **Bilingual UI** | English / 繁體中文 toggle. 100+ UI strings localized. Preferences saved across sessions. |
+
+### Example workflow
+
+```
+Submit Idea           Refine              Start Pipeline       Track Progress
+    │                    │                      │                    │
+    ▼                    ▼                      ▼                    ▼
+"I want a smart    AI suggests         6-phase pipeline     Click tasks ✓
+garden monitor"    embedded-firmware    with 8 tasks +      Watch agents work
+                   pipeline             5-agent team        Deliverables land
+                                                            100% 🎉
+```
 
 ## 🏗️ Architecture
 
