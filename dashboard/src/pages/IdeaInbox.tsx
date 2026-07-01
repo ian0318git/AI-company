@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   Lightbulb, Send, Loader2, AlertCircle, ChevronDown, ChevronUp,
   Sparkles, Play, CheckCircle2, Circle, Clock, Users, ListTodo,
-  ArrowRight, TrendingUp,
+  ArrowRight, TrendingUp, FileText, Download,
 } from 'lucide-react'
 import { api } from '../api/client'
 
@@ -117,6 +117,7 @@ export default function IdeaInbox() {
   const [refiningId, setRefiningId] = useState<string | null>(null)
   const [startingId, setStartingId] = useState<string | null>(null)
   const [workflows, setWorkflows] = useState<Record<string, WorkflowState>>({})
+  const [deliverables, setDeliverables] = useState<Record<string, any[]>>({})
 
   const fetchIdeas = async () => {
     try {
@@ -206,6 +207,13 @@ export default function IdeaInbox() {
       try {
         const wf = await api.ideas.workflow(ideaId)
         setWorkflows(prev => ({ ...prev, [ideaId]: wf }))
+      } catch { /* ignore */ }
+    }
+    // Fetch deliverables
+    if (!deliverables[ideaId]) {
+      try {
+        const d = await api.ideas.deliverables(ideaId)
+        setDeliverables(prev => ({ ...prev, [ideaId]: d }))
       } catch { /* ignore */ }
     }
   }
@@ -389,6 +397,48 @@ export default function IdeaInbox() {
             )}
           </div>
         </div>
+
+        {/* ── Deliverables ──────────────────────────────────────── */}
+        {(() => {
+          const ideaDeliverables = deliverables[wf.idea.id]
+          if (!ideaDeliverables || ideaDeliverables.length === 0) return null
+          return (
+            <div>
+              <div className="flex items-center gap-1.5 mb-2">
+                <FileText className="w-3.5 h-3.5 text-gray-400" />
+                <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                  Deliverables ({ideaDeliverables.length})
+                </span>
+              </div>
+              <ul className="space-y-1">
+                {ideaDeliverables.map((d: any, i: number) => (
+                  <li key={i} className="flex items-center gap-2 text-xs border border-[hsl(var(--border))] rounded p-2 bg-white/5">
+                    <FileText className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-gray-300">{d.name}</span>
+                      <span className="text-gray-500 ml-2">
+                        {(d.size / 1024).toFixed(1)} KB · {new Date(d.modified).toLocaleDateString()}
+                      </span>
+                      {d.preview && (
+                        <p className="text-gray-500 text-[10px] truncate mt-0.5">{d.preview.slice(0, 120)}...</p>
+                      )}
+                    </div>
+                    <a
+                      href={`/api/ideas/${wf.idea.id}/deliverables/${encodeURIComponent(d.name)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="flex items-center gap-1 px-2 py-1 bg-blue-600/30 hover:bg-blue-500/50 rounded text-[10px] font-medium transition-colors shrink-0 no-underline text-blue-300"
+                    >
+                      <Download className="w-3 h-3" />
+                      View
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        })()}
       </div>
     )
   }

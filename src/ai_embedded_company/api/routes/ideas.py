@@ -416,6 +416,51 @@ async def get_idea_workflow(
     }
 
 
+@router.get("/{idea_id}/deliverables")
+async def list_deliverables(idea_id: str) -> list[dict]:
+    """List deliverables (files) generated for an idea."""
+    from pathlib import Path
+
+    deliverables_dir = Path(__file__).parent.parent.parent.parent.parent / "data" / "deliverables"
+    if not deliverables_dir.exists():
+        return []
+
+    files = []
+    for f in sorted(deliverables_dir.glob(f"{idea_id}*"), key=lambda p: p.stat().st_mtime, reverse=True):
+        stat = f.stat()
+        files.append({
+            "name": f.name,
+            "path": str(f.relative_to(deliverables_dir.parent)),
+            "size": stat.st_size,
+            "modified": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+            "preview": f.read_text(encoding="utf-8")[:2000] if f.suffix in (".md", ".txt", ".json") else None,
+        })
+
+    return files
+
+
+@router.get("/{idea_id}/deliverables/{filename:path}")
+async def get_deliverable_content(idea_id: str, filename: str) -> dict:
+    """Serve a deliverable file's full content."""
+    from pathlib import Path
+
+    file_path = Path(__file__).parent.parent.parent.parent.parent / "data" / "deliverables" / filename
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Security: ensure file is within deliverables directory
+    real = file_path.resolve()
+    deliverables_root = (Path(__file__).parent.parent.parent.parent.parent / "data" / "deliverables").resolve()
+    if not str(real).startswith(str(deliverables_root)):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    return {
+        "name": file_path.name,
+        "content": file_path.read_text(encoding="utf-8"),
+        "size": file_path.stat().st_size,
+    }
+
+
 # ── helpers ────────────────────────────────────────────────────────────────────
 
 

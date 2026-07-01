@@ -61,6 +61,7 @@ export const api = {
     refine: (id: string) => request<any>('POST', `/ideas/${id}/refine`),
     start: (id: string) => request<any>('POST', `/ideas/${id}/start`),
     workflow: (id: string) => request<any>('GET', `/ideas/${id}/workflow`),
+    deliverables: (id: string) => request<any[]>('GET', `/ideas/${id}/deliverables`),
   },
 
   // Pipelines
