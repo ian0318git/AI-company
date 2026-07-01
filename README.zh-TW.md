@@ -57,6 +57,20 @@ uv run python install.py
 4. **Hardware Engineer** 規劃腳位
 5. 編譯 → 燒錄到你的 M5Stack
 
+## 🖥️ 儀表板
+
+透過 React 19 打造的視覺化網頁介面來管理專案、任務與 Pipeline。
+
+```bash
+# 方式一：透過 CLI（推薦）
+uv run aiteam dashboard
+
+# 方式二：手動透過 npm
+cd dashboard && npm run dev -- --host 0.0.0.0
+```
+
+然後在瀏覽器中開啟 **http://localhost:5173**。儀表板會自動將 API 請求代理到 `localhost:8765` 的後端。
+
 ## 🏗️ 架構
 
 ```

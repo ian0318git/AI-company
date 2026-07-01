@@ -57,6 +57,20 @@ The system will automatically:
 4. **Hardware Engineer** — Plan pin assignments
 5. Compile → Flash to your M5Stack
 
+## 🖥️ Dashboard
+
+Manage projects, tasks, and pipelines through a visual web interface powered by React 19.
+
+```bash
+# Option 1: Via CLI (recommended)
+uv run aiteam dashboard
+
+# Option 2: Manually via npm
+cd dashboard && npm run dev -- --host 0.0.0.0
+```
+
+Then open **http://localhost:5173** in your browser. The dashboard proxies API calls to the backend at `localhost:8765`.
+
 ## 🏗️ Architecture
 
 ```
@@ -125,6 +139,9 @@ uv run mypy src/ai_embedded_company/
 
 # Start API server
 uv run aiteam serve --reload
+
+# Start Dashboard
+uv run aiteam dashboard
 
 # Start MCP server
 uv run aiteam mcp

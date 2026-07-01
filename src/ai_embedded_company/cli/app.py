@@ -62,6 +62,28 @@ def install():
 
 
 @app.command()
+def dashboard(
+    host: str = typer.Option("0.0.0.0", help="Dashboard dev server host"),
+    port: int = typer.Option(5173, help="Dashboard dev server port"),
+):
+    """Start the React Dashboard (Vite dev server)."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    dashboard_dir = Path(__file__).parent.parent.parent.parent / "dashboard"
+    if not dashboard_dir.exists():
+        typer.echo(f"Dashboard directory not found: {dashboard_dir}", err=True)
+        raise typer.Exit(1)
+
+    typer.echo(f"Starting Dashboard on http://{host}:{port}")
+    subprocess.run(
+        ["npm", "run", "dev", "--", "--host", host, "--port", str(port)],
+        cwd=str(dashboard_dir),
+    )
+
+
+@app.command()
 def info():
     """Show system information."""
     from ai_embedded_company.__init__ import __version__
@@ -74,9 +96,10 @@ def info():
     typer.echo("Agent templates: 18")
     typer.echo("")
     typer.echo("Commands:")
-    typer.echo("  aiteam serve    Start the REST API server")
-    typer.echo("  aiteam mcp      Start the MCP server")
-    typer.echo("  aiteam install  Run the installer")
+    typer.echo("  aiteam serve       Start the REST API server")
+    typer.echo("  aiteam dashboard   Start the React Dashboard")
+    typer.echo("  aiteam mcp         Start the MCP server")
+    typer.echo("  aiteam install     Run the installer")
 
 
 if __name__ == "__main__":
