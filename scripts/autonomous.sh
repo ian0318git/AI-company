@@ -60,8 +60,28 @@ elif [ "$INTERVAL" = "stop" ]; then
     pkill -f "vite" 2>/dev/null || true
     echo "[Autonomous] Stopped."
 else
-    # Start Claude Code in loop mode
-    # The /loop command runs a prompt on a recurring interval
-    # Claude Code reads the prompt file each cycle and executes autonomously
-    claude --loop "$INTERVAL" --prompt-file scripts/autonomous-prompt.md
+    # Convert interval to seconds
+    case "$INTERVAL" in
+        *m) SLEEP_SEC=$((${INTERVAL%m} * 60)) ;;
+        *h) SLEEP_SEC=$((${INTERVAL%h} * 3600)) ;;
+        *)  SLEEP_SEC=300 ;;
+    esac
+
+    echo "[Autonomous] Starting autonomous loop (every ${SLEEP_SEC}s)..."
+    echo "[Autonomous] Press Ctrl+C to stop."
+
+    CYCLE=0
+    while true; do
+        CYCLE=$((CYCLE + 1))
+        TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "[$TIMESTAMP] Cycle #$CYCLE"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+        claude --print --allowedTools "Bash(curl:*) Bash(git:*) Read Write Edit TaskCreate TaskUpdate Bash(python3:*)" -p "Autonomous cycle #$CYCLE. Scan ideas at http://127.0.0.1:8765/api/ideas/ — refine new ones, start pipelines, execute up to 3 high-priority todo tasks from http://127.0.0.1:8765/api/tasks/, advance completed pipelines. Report 3-5 bullets of what you did." 2>&1
+
+        echo "[$TIMESTAMP] Cycle #$CYCLE complete. Sleeping ${SLEEP_SEC}s..."
+        sleep "$SLEEP_SEC"
+    done
 fi
