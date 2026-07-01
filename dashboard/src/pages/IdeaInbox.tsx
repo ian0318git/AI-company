@@ -108,18 +108,18 @@ export default function IdeaInbox() {
 
   const handleTaskToggle = async (ideaId: string, taskId: string, s: string) => {
     const next = s === 'todo' ? 'in_progress' : s === 'in_progress' ? 'done' : 'todo'
-    try { await api.tasks.updateStatus(taskId, next); setWorkflows(p => ({ ...p, [ideaId]: await api.ideas.workflow(ideaId) })) } catch {}
+    try { await api.tasks.updateStatus(taskId, next); const wf = await api.ideas.workflow(ideaId); setWorkflows(p => ({ ...p, [ideaId]: wf })) } catch {}
   }
 
   const handleAdvancePhase = async (ideaId: string, pipelineId: string) => {
-    try { await api.pipelines.advance(pipelineId); setWorkflows(p => ({ ...p, [ideaId]: await api.ideas.workflow(ideaId) })) } catch {}
+    try { await api.pipelines.advance(pipelineId); const wf = await api.ideas.workflow(ideaId); setWorkflows(p => ({ ...p, [ideaId]: wf })) } catch {}
   }
 
   const handleToggleExpand = async (ideaId: string) => {
     if (expanded === ideaId) { setExpanded(null); return }
     setExpanded(ideaId)
-    if (!workflows[ideaId]) { try { setWorkflows(p => ({ ...p, [ideaId]: await api.ideas.workflow(ideaId) })) } catch {} }
-    if (!deliverables[ideaId]) { try { setDeliverables(p => ({ ...p, [ideaId]: await api.ideas.deliverables(ideaId) })) } catch {} }
+    if (!workflows[ideaId]) { try { const wf = await api.ideas.workflow(ideaId); setWorkflows(p => ({ ...p, [ideaId]: wf })) } catch {} }
+    if (!deliverables[ideaId]) { try { const d = await api.ideas.deliverables(ideaId); setDeliverables(p => ({ ...p, [ideaId]: d })) } catch {} }
   }
 
   const renderWorkflow = (wf: WorkflowState) => {

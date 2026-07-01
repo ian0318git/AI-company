@@ -71,5 +71,3 @@ export const api = {
     advance: (id: string) => request<any>('POST', `/pipelines/${id}/advance`),
   },
 }
-
-export type { API }
