@@ -24,6 +24,7 @@ interface WorkflowState {
   tasks: WorkflowTask[]
   team: { id: string; name: string; members: WorkflowMember[] } | null
   agent_workflow: AgentAction[] | null
+  team_gaps: { agent: string; relevance: number; matched_skills: string[]; rationale: string }[] | null
 }
 
 const PHASE_ORDER = ['idea', 'requirements', 'design', 'implementation', 'testing', 'deploy', 'done']
@@ -256,6 +257,35 @@ export default function IdeaInbox() {
             )}
           </div>
         </div>
+
+        {/* Team Gaps */}
+        {wf.team_gaps && wf.team_gaps.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm font-medium text-yellow-400 uppercase tracking-wide">Suggested Agents</span>
+              <span className="text-xs text-gray-500">(based on idea requirements)</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {wf.team_gaps.map((gap) => (
+                <button
+                  key={gap.agent}
+                  onClick={async (e) => {
+                    e.stopPropagation()
+                    try { await api.ideas.addAgent(wf.idea.id, gap.agent); const u = await api.ideas.workflow(wf.idea.id); setWorkflows(p => ({ ...p, [wf.idea.id]: u })) } catch {}
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 border border-yellow-500/20 bg-yellow-500/5 hover:bg-yellow-500/10 rounded-lg text-sm transition-colors group"
+                  title={gap.rationale}
+                >
+                  <span className="text-yellow-400 text-base">+</span>
+                  <div className="text-left">
+                    <span className="text-gray-200 text-sm">{tr(`agent.${gap.agent}`) || gap.agent}</span>
+                    <div className="text-xs text-gray-500">{gap.matched_skills.slice(0, 3).join(', ')} <span className="text-yellow-500 ml-1">★{gap.relevance}</span></div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Agent Workflow */}
         {wf.agent_workflow && wf.agent_workflow.length > 0 && (

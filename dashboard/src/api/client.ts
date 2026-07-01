@@ -62,6 +62,8 @@ export const api = {
     start: (id: string) => request<any>('POST', `/ideas/${id}/start`),
     workflow: (id: string) => request<any>('GET', `/ideas/${id}/workflow`),
     deliverables: (id: string) => request<any[]>('GET', `/ideas/${id}/deliverables`),
+    addAgent: (id: string, agent: string) => request<any>('POST', `/ideas/${id}/team/add-agent?agent_role=${encodeURIComponent(agent)}`),
+    removeAgent: (id: string, agent: string) => request<any>('POST', `/ideas/${id}/team/remove-agent?agent_role=${encodeURIComponent(agent)}`),
   },
 
   // Pipelines

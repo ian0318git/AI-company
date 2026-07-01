@@ -128,6 +128,113 @@ _PIPELINE_DEFS: dict[str, dict] = {
 }
 
 
+# ── Agent Skill Registry ───────────────────────────────────────────────────────
+
+_AGENT_SKILLS: dict[str, dict] = {
+    "embedded-firmware-engineer": {
+        "skills": ["c/c++", "rtos", "freertos", "hal", "driver", "firmware", "mcu",
+                   "esp32", "stm32", "arm", "debugging", "jtag", "uart", "spi", "i2c",
+                   "gpio", "pwm", "adc", "dma", "interrupt", "bootloader"],
+        "keywords": ["韌體", "firmware", "mcu", "單晶片", "rtos", "driver", "驅動"],
+    },
+    "embedded-hardware-engineer": {
+        "skills": ["pcb", "schematic", "power", "emi", "signal-integrity", "layout",
+                   "oscilloscope", "multimeter", "gpio", "sensor", "actuator", "relay"],
+        "keywords": ["硬體", "電路", "pcb", "layout", "power", "電源", "腳位", "pin"],
+    },
+    "embedded-linux-engineer": {
+        "skills": ["linux", "kernel", "buildroot", "yocto", "device-tree", "cross-compile",
+                   "driver", "embedded-linux", "systemd", "networking"],
+        "keywords": ["linux", "kernel", "buildroot", "yocto", "樹莓派", "raspberry"],
+    },
+    "embedded-iot-engineer": {
+        "skills": ["mqtt", "coap", "ble", "wifi", "lora", "zigbee", "ota", "cloud",
+                   "aws-iot", "azure-iot", "tcp/ip", "tls", "低功耗", "mesh"],
+        "keywords": ["wifi", "ble", "mqtt", "iot", "物聯網", "雲端", "cloud", "ota", "lora", "zigbee"],
+    },
+    "embedded-sensor-driver-dev": {
+        "skills": ["i2c", "spi", "uart", "sensor", "imu", "temperature", "humidity",
+                   "pressure", "accelerometer", "gyroscope", "magnetometer", "adc"],
+        "keywords": ["sensor", "感測器", "i2c", "spi", "溫度", "濕度", "壓力", "加速度"],
+    },
+    "embedded-testing-engineer": {
+        "skills": ["unit-test", "hil", "integration-test", "ci/cd", "coverage",
+                   "static-analysis", "memory-analysis", "power-analysis"],
+        "keywords": ["測試", "test", "驗證", "hil", "coverage"],
+    },
+    "software-architect": {
+        "skills": ["architecture", "design-patterns", "system-design", "microservices",
+                   "api-design", "database", "scalability", "technical-spec"],
+        "keywords": ["架構", "architecture", "系統設計", "system design"],
+    },
+    "backend-developer": {
+        "skills": ["python", "fastapi", "sql", "postgresql", "redis", "rest", "graphql",
+                   "docker", "aws", "api", "database"],
+        "keywords": ["後端", "api", "backend", "server", "database", "資料庫"],
+    },
+    "frontend-developer": {
+        "skills": ["react", "typescript", "css", "tailwind", "ui/ux", "frontend",
+                   "responsive", "accessibility"],
+        "keywords": ["前端", "frontend", "ui", "dashboard", "網頁", "react", "vue"],
+    },
+    "fullstack-developer": {
+        "skills": ["python", "javascript", "react", "fastapi", "sql", "docker",
+                   "fullstack", "prototype", "mvp"],
+        "keywords": ["全端", "fullstack", "full stack", "web", "prototype"],
+    },
+    "devops-engineer": {
+        "skills": ["docker", "kubernetes", "ci/cd", "aws", "terraform", "ansible",
+                   "monitoring", "logging", "github-actions"],
+        "keywords": ["部署", "deploy", "ci/cd", "docker", "kubernetes", "devops"],
+    },
+    "security-engineer": {
+        "skills": ["penetration-testing", "code-audit", "tls", "authentication",
+                   "authorization", "owasp", "secure-boot", "encryption"],
+        "keywords": ["安全", "security", "加密", "encryption", "稽核", "audit", "滲透"],
+    },
+    "tech-lead": {
+        "skills": ["architecture", "code-review", "mentoring", "technical-strategy",
+                   "risk-assessment", "technology-selection"],
+        "keywords": ["技術", "tech", "review", "審查", "決策"],
+    },
+    "project-manager": {
+        "skills": ["planning", "scheduling", "risk-management", "stakeholder",
+                   "agile", "scrum", "roadmap"],
+        "keywords": ["管理", "進度", "時程", "milestone", "交付"],
+    },
+    "qa-engineer": {
+        "skills": ["testing", "e2e", "regression", "test-automation", "bug-tracking",
+                   "quality", "acceptance"],
+        "keywords": ["測試", "qa", "品質", "驗收", "bug"],
+    },
+    "technical-writer": {
+        "skills": ["documentation", "technical-writing", "api-docs", "user-guide",
+                   "tutorial", "markdown", "diagram"],
+        "keywords": ["文件", "document", "報告", "report", "簡報", "presentation", "分析"],
+    },
+    "idea-refiner": {
+        "skills": ["requirements", "brainstorming", "research", "analysis",
+                   "market-research", "feasibility"],
+        "keywords": ["想法", "idea", "分析", "analysis", "研究", "research", "市場"],
+    },
+    "rapid-prototyper": {
+        "skills": ["prototype", "mvp", "fast-iteration", "demo", "poc",
+                   "proof-of-concept"],
+        "keywords": ["原型", "prototype", "mvp", "快速", "demo", "示範"],
+    },
+    "code-reviewer": {
+        "skills": ["code-review", "static-analysis", "best-practices", "refactoring",
+                   "security-review", "performance"],
+        "keywords": ["審查", "review", "refactor", "code quality", "程式碼品質"],
+    },
+}
+
+# Skill → agent lookup (inverted index)
+_SKILL_TO_AGENTS: dict[str, list[str]] = {}
+for _agent_id, _data in _AGENT_SKILLS.items():
+    for _skill in _data["skills"]:
+        _SKILL_TO_AGENTS.setdefault(_skill, []).append(_agent_id)
+
 # ── Agent workflow definitions (detailed execution plan per pipeline) ──────────
 
 _AGENT_WORKFLOWS: dict[str, list[dict]] = {
@@ -531,6 +638,12 @@ async def start_idea(
     pipeline_type = idea.suggested_pipeline or "quick-prototype"
     pipeline_def = _PIPELINE_DEFS.get(pipeline_type, _PIPELINE_DEFS["quick-prototype"])
 
+    # Dynamic team composition: base team + gap analysis suggestions (top 3)
+    base_team = [role.value if hasattr(role, "value") else str(role) for role in pipeline_def["team"]]
+    gaps = _analyze_team_gaps(idea, None)
+    extra_agents = [g["agent"] for g in gaps[:3] if g["agent"] not in base_team and g["relevance"] >= 2]
+    final_team = base_team + extra_agents
+
     # 1. Create pipeline with steps
     now = datetime.now(timezone.utc).isoformat()
     steps = [
@@ -549,7 +662,7 @@ async def start_idea(
     session.add(pipeline)
     await session.flush()
 
-    # 2. Create seed tasks
+    # 2. Create seed tasks (assigned cyclically across the dynamic team)
     tasks_created = []
     for i, task_title in enumerate(pipeline_def["seed_tasks"]):
         task = TaskModel(
@@ -558,16 +671,15 @@ async def start_idea(
             description="",
             status="todo",
             priority="high" if i == 0 else "medium",
-            assigned_agent=pipeline_def["team"][i % len(pipeline_def["team"])].value
-            if pipeline_def["team"] else None,
+            assigned_agent=final_team[i % len(final_team)] if final_team else None,
         )
         session.add(task)
         tasks_created.append(task)
 
-    # 3. Create team
+    # 3. Create team (dynamically composed: base team + gap-filling agents)
     member_list = [
-        {"role": role.value if hasattr(role, "value") else role, "status": "idle"}
-        for role in pipeline_def["team"]
+        {"role": role, "status": "idle"}
+        for role in final_team
     ]
     team = TeamModel(
         name=f"Team for: {idea.title}",
@@ -676,6 +788,9 @@ async def get_idea_workflow(
             await session.commit()
             await session.refresh(idea)
 
+    # Team gap analysis: what skills does this idea need that the current team lacks?
+    team_gaps = _analyze_team_gaps(idea, team_model)
+
     # Agent workflow
     agent_workflow = None
     if pipeline_model and pipeline_model.pipeline_type in _AGENT_WORKFLOWS:
@@ -700,6 +815,7 @@ async def get_idea_workflow(
         "tasks": tasks_data,
         "team": team_data,
         "agent_workflow": agent_workflow,
+        "team_gaps": team_gaps,
     }
 
 
@@ -804,7 +920,134 @@ async def get_deliverable_content(idea_id: str, filename: str) -> dict:
     }
 
 
+# ── Team Management ────────────────────────────────────────────────────────────
+
+
+@router.post("/{idea_id}/team/add-agent")
+async def add_agent_to_team(
+    idea_id: str,
+    agent_role: str = "",
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Dynamically add an agent to the idea's team."""
+    result = await session.execute(select(IdeaModel).where(IdeaModel.id == idea_id))
+    idea = result.scalar_one_or_none()
+    if idea is None:
+        raise HTTPException(status_code=404, detail="Idea not found")
+
+    team_result = await session.execute(
+        select(TeamModel).where(TeamModel.project_id == idea.project_id)
+    )
+    team = team_result.scalar_one_or_none()
+
+    members = json.loads(team.members) if team and team.members else []
+    existing = [m["role"] for m in members]
+
+    if agent_role in existing:
+        return {"status": "already_present", "agent": agent_role, "message": f"{agent_role} is already in the team."}
+
+    if agent_role not in _AGENT_SKILLS:
+        return {"status": "unknown_agent", "agent": agent_role, "valid_agents": sorted(_AGENT_SKILLS.keys())}
+
+    members.append({"role": agent_role, "status": "idle"})
+    team.members = json.dumps(members)
+    await session.commit()
+
+    return {
+        "status": "added",
+        "agent": agent_role,
+        "team_size": len(members),
+        "message": f"Added {agent_role} to the team. Team now has {len(members)} members.",
+    }
+
+
+@router.post("/{idea_id}/team/remove-agent")
+async def remove_agent_from_team(
+    idea_id: str,
+    agent_role: str = "",
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Remove an agent from the idea's team."""
+    result = await session.execute(select(IdeaModel).where(IdeaModel.id == idea_id))
+    idea = result.scalar_one_or_none()
+    if idea is None:
+        raise HTTPException(status_code=404, detail="Idea not found")
+
+    team_result = await session.execute(
+        select(TeamModel).where(TeamModel.project_id == idea.project_id)
+    )
+    team = team_result.scalar_one_or_none()
+    if not team:
+        return {"status": "no_team", "message": "No team exists for this idea yet."}
+
+    members = json.loads(team.members) if team.members else []
+    members = [m for m in members if m["role"] != agent_role]
+    team.members = json.dumps(members)
+    await session.commit()
+
+    return {"status": "removed", "agent": agent_role, "team_size": len(members)}
+
+
 # ── file helpers ───────────────────────────────────────────────────────────────
+
+
+def _analyze_team_gaps(idea: IdeaModel, team_model) -> list[dict]:
+    """Analyze what skills an idea needs that the current team lacks.
+
+    Returns a list of suggested agents to add, with rationale.
+    """
+    if not idea or not idea.raw_description:
+        return []
+
+    desc = idea.raw_description.lower()
+    try:
+        tags = json.loads(idea.tags) if isinstance(idea.tags, str) else (idea.tags or [])
+    except (json.JSONDecodeError, TypeError):
+        tags = []
+    all_text = desc + " " + " ".join(t.lower() for t in tags if isinstance(t, str))
+
+    # Current team members
+    current_agents: set[str] = set()
+    if team_model and team_model.members:
+        try:
+            members = json.loads(team_model.members) if isinstance(team_model.members, str) else team_model.members
+            current_agents = {m["role"] for m in members}
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # Default pipeline team if no team model yet
+    if not current_agents and idea.suggested_pipeline and idea.suggested_pipeline in _PIPELINE_DEFS:
+        pipeline_def = _PIPELINE_DEFS[idea.suggested_pipeline]
+        current_agents = {role.value if hasattr(role, "value") else str(role) for role in pipeline_def.get("team", [])}
+
+    # Score each agent against the idea text
+    scored: list[tuple[str, int, list[str]]] = []
+    for agent_id, data in _AGENT_SKILLS.items():
+        if agent_id in current_agents:
+            continue  # Already on team
+
+        matched_skills: list[str] = []
+        for skill in data["skills"]:
+            if skill.replace("-", " ") in all_text or skill in all_text:
+                matched_skills.append(skill)
+        for kw in data["keywords"]:
+            if kw in all_text:
+                matched_skills.append(kw)
+
+        if matched_skills:
+            scored.append((agent_id, len(matched_skills), list(set(matched_skills))))
+
+    scored.sort(key=lambda x: x[1], reverse=True)
+
+    return [
+        {
+            "agent": agent_id,
+            "relevance": score,
+            "matched_skills": matched,
+            "rationale": f"This idea mentions concepts ({', '.join(matched[:3])}) that match {agent_id}'s expertise. Consider adding to the team.",
+        }
+        for agent_id, score, matched in scored[:5]
+    ]
 
 
 def _resolve_deliverable_path(filename: str):
