@@ -72,7 +72,7 @@ async def update_task_status(
     status: str,
     session: AsyncSession = Depends(get_session),
 ) -> Task:
-    """Update a task's status."""
+    """Update a task's status. Auto-advances pipeline when all tasks are done."""
     valid = {s.value for s in TaskStatus}
     if status not in valid:
         raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid}")
@@ -85,9 +85,54 @@ async def update_task_status(
         raise HTTPException(status_code=404, detail="Task not found")
 
     model.status = status
+    await session.flush()
+
+    # Auto-advance pipeline when all tasks in the project are done
+    if status == "done":
+        await _auto_advance_if_all_done(session, model.project_id)
+
     await session.commit()
     await session.refresh(model)
     return _model_to_task(model)
+
+
+async def _auto_advance_if_all_done(session, project_id: str):
+    """If every task in this project is done, advance the pipeline one phase."""
+    from ai_embedded_company.storage.models import PipelineModel
+
+    # Check if any non-done tasks remain
+    remaining = await session.execute(
+        select(TaskModel).where(
+            TaskModel.project_id == project_id,
+            TaskModel.status != "done",
+        )
+    )
+    if remaining.scalars().first() is not None:
+        return  # Not all done yet
+
+    # Find pipeline for this project
+    pipe_result = await session.execute(
+        select(PipelineModel).where(PipelineModel.project_id == project_id)
+    )
+    pipeline = pipe_result.scalar_one_or_none()
+    if pipeline is None or pipeline.current_phase == "done":
+        return  # No pipeline or already done
+
+    # Advance to next phase
+    phase_order = ["idea", "requirements", "design", "implementation", "testing", "deploy", "done"]
+    current_idx = phase_order.index(pipeline.current_phase) if pipeline.current_phase in phase_order else 0
+    next_idx = min(current_idx + 1, len(phase_order) - 1)
+    pipeline.current_phase = phase_order[next_idx]
+
+    # If advancing to "done", also mark the linked idea as done
+    if phase_order[next_idx] == "done" and pipeline.idea_id:
+        from ai_embedded_company.storage.models import IdeaModel
+        idea_result = await session.execute(
+            select(IdeaModel).where(IdeaModel.id == pipeline.idea_id)
+        )
+        idea = idea_result.scalar_one_or_none()
+        if idea and idea.status != "done":
+            idea.status = "done"
 
 
 def _model_to_task(m: TaskModel) -> Task:
