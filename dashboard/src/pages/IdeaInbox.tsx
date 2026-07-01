@@ -256,7 +256,7 @@ export default function IdeaInbox() {
           {pipeline && (
             <button
               onClick={e => { e.stopPropagation(); handleAdvancePhase(wf.idea.id, pipeline.id) }}
-              disabled={currentIdx >= totalPhases - 1}
+              disabled={pipeline.current_phase === 'done'}
               className="flex items-center gap-1 px-2 py-1 bg-blue-600/50 hover:bg-blue-500 disabled:opacity-30 rounded text-[10px] font-medium transition-colors shrink-0"
               title="Advance to next phase"
             >
@@ -307,9 +307,9 @@ export default function IdeaInbox() {
                 )
               })}
             </div>
-            {currentIdx >= totalPhases - 1 && (
+            {pipeline.current_phase === 'done' && (
               <p className="text-xs text-green-400 mt-2 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> All phases complete — ready to deploy!
+                <CheckCircle2 className="w-3 h-3" /> All phases complete!
               </p>
             )}
           </div>
