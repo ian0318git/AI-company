@@ -42,6 +42,7 @@ def register_all(mcp):
     _try_register(mcp, "ai_embedded_company.mcp.tools.knowledge", "knowledge")
     _try_register(mcp, "ai_embedded_company.mcp.tools.code", "code")
     _try_register(mcp, "ai_embedded_company.mcp.tools.guardrails", "guardrails")
+    _try_register(mcp, "ai_embedded_company.mcp.tools.evolution", "evolution")
 
 
 def _try_register(mcp, module_name: str, label: str):

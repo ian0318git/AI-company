@@ -143,3 +143,55 @@ class EventLogModel(Base):
     source: Mapped[str] = mapped_column(String(128), default="")
     payload: Mapped[str] = mapped_column(Text, default="{}")  # JSON
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
+# ── Self-Evolution: Failure Alchemy ───────────────────────────────────────────
+
+
+class FailureRecord(Base):
+    """Antibody: failure experience stored to prevent future recurrence."""
+    __tablename__ = "failure_records"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    task_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("tasks.id"), nullable=True)
+    project_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("projects.id"), nullable=True)
+    agent_role: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    title: Mapped[str] = mapped_column(String(256), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="")
+    root_cause: Mapped[str] = mapped_column(Text, default="")  # Extracted root cause
+    category: Mapped[str] = mapped_column(String(64), default="unknown")
+    # categories: logic_error, resource_leak, race_condition, config_miss, dependency, timeout, api_error, security
+    severity: Mapped[str] = mapped_column(String(32), default="medium")  # low, medium, high, critical
+    frequency: Mapped[int] = mapped_column(Integer, default=1)  # How many times this pattern occurred
+    antibody: Mapped[str] = mapped_column(Text, default="")  # Prevention strategy
+    vaccine: Mapped[str] = mapped_column(Text, default="")  # Pre-task warning to inject
+    catalyst: Mapped[str] = mapped_column(Text, default="")  # Prompt improvement to inject
+    status: Mapped[str] = mapped_column(String(32), default="analyzed")  # reported, analyzed, resolved, archived
+    tags: Mapped[str] = mapped_column(String(1024), default="")  # JSON-encoded list
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
+
+
+# ── Self-Evolution: Research Findings ─────────────────────────────────────────
+
+
+class ResearchFinding(Base):
+    """Findings from the research agent loop — feeds into brainstorming."""
+    __tablename__ = "research_findings"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    title: Mapped[str] = mapped_column(String(256), nullable=False)
+    source: Mapped[str] = mapped_column(String(256), default="")  # URL, paper, tool name
+    source_type: Mapped[str] = mapped_column(String(64), default="web")
+    # source_type: competitor, framework, paper, tool, pattern, trend
+    summary: Mapped[str] = mapped_column(Text, default="")
+    relevance_score: Mapped[int] = mapped_column(Integer, default=5)  # 1-10
+    debate_notes: Mapped[str] = mapped_column(Text, default="")  # Agent debate output
+    action_items: Mapped[str] = mapped_column(Text, default="")  # JSON list of follow-up tasks
+    idea_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("ideas.id"), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="new")
+    # new, debated, accepted, rejected, implemented
+    tags: Mapped[str] = mapped_column(String(1024), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)

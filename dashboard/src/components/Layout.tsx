@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, ListTodo, Lightbulb, GitBranch, Cpu, BookOpen, Settings, Globe } from 'lucide-react'
+import { LayoutDashboard, ListTodo, Lightbulb, GitBranch, Cpu, BookOpen, Settings, Globe, TrendingUp } from 'lucide-react'
 import { useI18n } from '../i18n/context'
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -10,6 +10,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { to: '/tasks', label: tr('nav.taskWall'), icon: ListTodo },
     { to: '/ideas', label: tr('nav.ideaInbox'), icon: Lightbulb },
     { to: '/pipelines', label: tr('nav.pipelines'), icon: GitBranch },
+    { to: '/evolution', label: tr('nav.evolution'), icon: TrendingUp },
     { to: '/hardware', label: tr('nav.hardware'), icon: Cpu },
     { to: '/knowledge', label: tr('nav.knowledge'), icon: BookOpen },
     { to: '/settings', label: tr('nav.settings'), icon: Settings },
