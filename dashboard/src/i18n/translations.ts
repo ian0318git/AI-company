@@ -13,6 +13,11 @@ export const t: Record<Lang, Record<string, string>> = {
     'nav.settings': 'Settings',
     'brand.name': 'AI Company',
     'lang.switch': '中文',
+    'ceo.title': 'CEO: Claude AI',
+    'ceo.subtitle': 'Autonomous execution engine. Running the company while you sleep.',
+    'ceo.chairman': 'Chairman (You)',
+    'ceo.ai': 'CEO (AI)',
+    'ceo.agents': '18 Agents',
 
     // Idea Inbox
     'idea.title': 'Idea Inbox',
@@ -111,6 +116,11 @@ export const t: Record<Lang, Record<string, string>> = {
     'nav.settings': '設定',
     'brand.name': 'AI 公司',
     'lang.switch': 'English',
+    'ceo.title': 'CEO：Claude AI',
+    'ceo.subtitle': '自主執行引擎。在你睡覺時運作整間公司。',
+    'ceo.chairman': '董事長（你）',
+    'ceo.ai': 'CEO（AI）',
+    'ceo.agents': '18 個 Agent',
 
     // Idea Inbox
     'idea.title': '想法收件匣',

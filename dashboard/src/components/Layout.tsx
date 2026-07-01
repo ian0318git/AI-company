@@ -20,11 +20,27 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen">
       {/* Sidebar */}
       <aside className="w-60 border-r border-[hsl(var(--border))] p-5 flex flex-col gap-1">
-        <div className="mb-6 px-3 py-2 flex items-center justify-between">
+        <div className="mb-4 px-3 py-2">
           <h1 className="text-base font-bold tracking-tight">
             <Cpu className="inline w-5 h-5 mr-2 text-blue-400" />
             {tr('brand.name')}
           </h1>
+        </div>
+
+        {/* CEO Status */}
+        <div className="mb-4 mx-1 p-3 rounded-lg border border-blue-500/20 bg-blue-500/5">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-sm font-medium text-blue-400">{tr('ceo.title')}</span>
+          </div>
+          <p className="text-xs text-gray-400 leading-relaxed">{tr('ceo.subtitle')}</p>
+          <div className="flex items-center gap-1 mt-2 text-[10px] text-gray-500">
+            <span>👤 {tr('ceo.chairman')}</span>
+            <span className="text-gray-600">→</span>
+            <span className="text-blue-400">🤖 {tr('ceo.ai')}</span>
+            <span className="text-gray-600">→</span>
+            <span>👥 {tr('ceo.agents')}</span>
+          </div>
         </div>
 
         {nav.map(({ to, label, icon: Icon }) => (
