@@ -780,11 +780,19 @@ async def get_idea_workflow(
             "members": members,
         }
 
-    # Auto-sync: if pipeline done + all tasks done → mark idea done
-    if pipeline_model and pipeline_model.current_phase == "done" and task_list:
+    # Auto-sync: align idea status with actual pipeline + task state
+    if pipeline_model and task_list:
         all_done = all(t.status == "done" for t in task_list)
-        if all_done and idea.status != "done":
-            idea.status = "done"
+        any_progress = any(t.status in ("done", "in_progress") for t in task_list)
+
+        if pipeline_model.current_phase == "done" and all_done:
+            if idea.status != "done":
+                idea.status = "done"
+                await session.commit()
+                await session.refresh(idea)
+        elif idea.status == "done" and not all_done:
+            # Stale "done" status — tasks not actually done, roll back
+            idea.status = "in_progress"
             await session.commit()
             await session.refresh(idea)
 
