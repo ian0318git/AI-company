@@ -46,6 +46,23 @@ export const api = {
     create: (data: any) => request<any>('POST', '/teams/', data),
   },
 
+  // Ideas
+  ideas: {
+    list: (projectId?: string, status?: string) => {
+      const params = new URLSearchParams()
+      if (projectId) params.set('project_id', projectId)
+      if (status) params.set('status', status)
+      const qs = params.toString()
+      return request<any[] | { ideas: any[] }>('GET', `/ideas/${qs ? `?${qs}` : ''}`)
+    },
+    create: (data: { title: string; raw_description: string; tags?: string[] }) =>
+      request<any>('POST', '/ideas/', data),
+    get: (id: string) => request<any>('GET', `/ideas/${id}`),
+    refine: (id: string) => request<any>('POST', `/ideas/${id}/refine`),
+    start: (id: string) => request<any>('POST', `/ideas/${id}/start`),
+    workflow: (id: string) => request<any>('GET', `/ideas/${id}/workflow`),
+  },
+
   // Pipelines
   pipelines: {
     list: (projectId?: string) => request<any[]>('GET', `/pipelines/${projectId ? `?project_id=${projectId}` : ''}`),

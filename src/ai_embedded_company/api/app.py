@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from ai_embedded_company.api.routes.ideas import router as ideas_router
 from ai_embedded_company.api.routes.pipelines import router as pipelines_router
 from ai_embedded_company.api.routes.projects import router as projects_router
 from ai_embedded_company.api.routes.system import router as system_router
@@ -44,6 +45,7 @@ def create_app() -> FastAPI:
     # Register routes
     app.include_router(system_router, tags=["System"])
     app.include_router(projects_router, prefix="/api/projects", tags=["Projects"])
+    app.include_router(ideas_router, prefix="/api/ideas", tags=["Ideas"])
     app.include_router(tasks_router, prefix="/api/tasks", tags=["Tasks"])
     app.include_router(teams_router, prefix="/api/teams", tags=["Teams"])
     app.include_router(pipelines_router, prefix="/api/pipelines", tags=["Pipelines"])
