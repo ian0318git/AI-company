@@ -137,6 +137,68 @@ cd dashboard && npm run dev -- --host 0.0.0.0
 
 > 💡 *「你晚上離開，系統自己運作。隔天回來，發現抗體在你睡著時誕生了。」*
 
+## 🤖 自主執行模式
+
+不用再坐在電腦前按 yes — 系統可以自己跑。
+
+### 快速啟動
+
+```bash
+# 啟動自主模式（每 5 分鐘執行一次週期）
+./scripts/autonomous.sh
+
+# 自訂間隔
+./scripts/autonomous.sh 10m    # 每 10 分鐘
+./scripts/autonomous.sh 30m    # 每 30 分鐘
+
+# 只跑一個週期（測試用）
+./scripts/autonomous.sh once
+
+# 停止自主循環
+./scripts/autonomous.sh stop
+```
+
+### 你離開後會發生什麼事
+
+1. **API 伺服器自動啟動**（如果沒在跑）
+2. **Dashboard 自動啟動**（如果沒在跑）
+3. **Claude Code 進入 `/loop` 模式**，載入自主執行 prompt
+4. 每個週期，系統會：
+   - 掃描 Idea Inbox 新想法 → 精煉 → 建立管線
+   - 檢查任務牆 → 執行下一個高優先級任務
+   - 推進已完成的管線階段
+   - 回報失敗 → 自動產生抗體/疫苗/催化劑
+   - 每 5 個週期：執行研究掃描 → 提交發現
+5. **不需要按任何許可** — `.claude/settings.json` 已預先授權
+
+### 實際體驗
+
+```
+晚上 9:00 — 你輸入：./scripts/autonomous.sh 10m
+晚上 9:00 — 你蓋上筆電去睡覺
+
+你睡覺時：
+  9:05 — CEO 接手 2 個高優先級任務
+  9:15 — 研究 agent 發現 Zephyr 4.0 發布
+  9:25 — 失敗煉金術分析 I2C timeout bug
+  9:35 — 3 個任務完成，管線推進到測試階段
+  ...
+
+早上 7:00 — 你打開 Evolution 儀表板
+          — 4 個抗體誕生，2 個研究發現被採納
+          — 所有管線已推進，任務已完成
+          — 你一個提示都沒發出
+```
+
+### 如何運作
+
+| 組件 | 角色 |
+|------|------|
+| `scripts/autonomous.sh` | 啟動器 — 啟動 API、Dashboard、Claude Code `/loop` |
+| `scripts/autonomous-prompt.md` | 自主執行指令 |
+| `.claude/settings.json` | 權限白名單 — 不再跳出 yes/no |
+| `/loop` 模式 | Claude Code 內建的重複執行引擎 |
+
 ## 🏗️ 架構
 
 ```

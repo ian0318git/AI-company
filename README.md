@@ -137,6 +137,68 @@ Open **http://localhost:5173/evolution** to see:
 
 > 💡 *"You leave at night. The system runs. You come back to antibodies that were born while you slept."*
 
+## 🤖 Autonomous Mode
+
+Stop clicking "yes" — the system can run on its own.
+
+### Quick Start
+
+```bash
+# Start autonomous mode (runs every 5 minutes)
+./scripts/autonomous.sh
+
+# Custom interval
+./scripts/autonomous.sh 10m    # Every 10 minutes
+./scripts/autonomous.sh 30m    # Every 30 minutes
+
+# One cycle only (test run)
+./scripts/autonomous.sh once
+
+# Stop the autonomous loop
+./scripts/autonomous.sh stop
+```
+
+### What happens when you walk away
+
+1. **API server auto-starts** if not running
+2. **Dashboard auto-starts** if not running
+3. **Claude Code enters `/loop` mode** with the autonomous prompt
+4. Every cycle, the system:
+   - Scans the Idea Inbox for new ideas → refines them → creates pipelines
+   - Checks the Task Wall → executes the next high-priority task
+   - Advances pipelines when phases are complete
+   - Reports failures → antibodies/vaccines/catalysts auto-generated
+   - Every 5 cycles: runs research scan → submits findings
+5. **No permission prompts** — `.claude/settings.json` pre-authorizes common operations
+
+### The experience
+
+```
+9:00 PM — You type: ./scripts/autonomous.sh 10m
+9:00 PM — You close your laptop and go to sleep
+
+While you sleep:
+  9:05 — CEO picks up 2 high-priority tasks
+  9:15 — Research agent finds Zephyr 4.0 release notes
+  9:25 — Failure alchemy analyzes an I2C timeout bug
+  9:35 — 3 tasks marked done, pipeline advances to testing
+  ...
+
+7:00 AM — You open the Evolution dashboard
+         — 4 antibodies born, 2 research findings accepted
+         — All pipelines advanced, tasks completed
+         — Zero prompts from you
+```
+
+### How it works
+
+| Component | Role |
+|-----------|------|
+| `scripts/autonomous.sh` | Launcher — starts API, dashboard, and Claude Code `/loop` |
+| `scripts/autonomous-prompt.md` | The autonomous execution instructions |
+| `.claude/settings.json` | Permission allowlist — no more yes/no prompts |
+| `/loop` mode | Claude Code's built-in recurring execution engine |
+
 ## 🏗️ Architecture
 
 ```

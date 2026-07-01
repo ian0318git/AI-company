@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl:*)",
+      "Bash(git:*)",
+      "Bash(uv:*)",
+      "Bash(python3:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(mkdir:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(echo:*)",
+      "Bash(cd:*)",
+      "Bash(pio:*)",
+      "Bash(platformio:*)",
+      "Bash(esptool:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(head:*)",
+      "Bash(sleep:*)",
+      "Bash(ps:*)",
+      "Bash(ss:*)",
+      "WebSearch",
+      "WebFetch",
+      "Read",
+      "Write",
+      "Edit",
+      "Task",
+      "TaskCreate",
+      "TaskUpdate",
+      "Bash(git push:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(sudo:*)",
+      "Bash(drop:*)",
+      "Bash(shutdown:*)",
+      "Bash(reboot:*)"
+    ]
+  }
+}
