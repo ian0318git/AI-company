@@ -424,7 +424,7 @@ export default function IdeaInbox() {
                       )}
                     </div>
                     <a
-                      href={`/api/ideas/${wf.idea.id}/deliverables/${encodeURIComponent(d.name)}`}
+                      href={`/api/ideas/${wf.idea.id}/deliverables/${encodeURIComponent(d.name)}/html`}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={e => e.stopPropagation()}

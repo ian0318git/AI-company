@@ -439,26 +439,248 @@ async def list_deliverables(idea_id: str) -> list[dict]:
     return files
 
 
-@router.get("/{idea_id}/deliverables/{filename:path}")
-async def get_deliverable_content(idea_id: str, filename: str) -> dict:
-    """Serve a deliverable file's full content."""
-    from pathlib import Path
+@router.get("/{idea_id}/deliverables/{filename:path}/html")
+async def get_deliverable_html(idea_id: str, filename: str):
+    """Serve a deliverable file rendered as a styled HTML page. MUST be before the catch-all {filename:path} route."""
+    from fastapi.responses import HTMLResponse
 
-    file_path = Path(__file__).parent.parent.parent.parent.parent / "data" / "deliverables" / filename
-    if not file_path.exists() or not file_path.is_file():
+    file_path = _resolve_deliverable_path(filename)
+    if file_path is None or not file_path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Security: ensure file is within deliverables directory
-    real = file_path.resolve()
-    deliverables_root = (Path(__file__).parent.parent.parent.parent.parent / "data" / "deliverables").resolve()
-    if not str(real).startswith(str(deliverables_root)):
-        raise HTTPException(status_code=403, detail="Access denied")
+    md_content = file_path.read_text(encoding="utf-8")
+    html_body = _markdown_to_html(md_content)
+    html_page = f"""<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{file_path.name}</title>
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC', sans-serif;
+    background: #0d1117; color: #c9d1d9; line-height: 1.7;
+    max-width: 860px; margin: 0 auto; padding: 40px 24px;
+  }}
+  h1 {{ font-size: 2em; color: #58a6ff; border-bottom: 1px solid #21262d; padding-bottom: 12px; margin-bottom: 8px; }}
+  h2 {{ font-size: 1.4em; color: #f0f6fc; margin-top: 36px; margin-bottom: 12px; border-bottom: 1px solid #21262d; padding-bottom: 6px; }}
+  h3 {{ font-size: 1.15em; color: #f0f6fc; margin-top: 24px; margin-bottom: 8px; }}
+  h4 {{ font-size: 1em; color: #f0f6fc; margin-top: 18px; margin-bottom: 6px; }}
+  p {{ margin: 10px 0; }}
+  strong {{ color: #f0f6fc; }}
+  blockquote {{ border-left: 3px solid #58a6ff; padding: 8px 16px; margin: 16px 0; color: #8b949e; background: #161b22; border-radius: 0 6px 6px 0; }}
+  blockquote p {{ margin: 4px 0; }}
+  a {{ color: #58a6ff; text-decoration: none; }}
+  a:hover {{ text-decoration: underline; }}
+  code {{ background: #161b22; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; color: #f0883e; }}
+  pre {{ background: #161b22; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 12px 0; }}
+  pre code {{ background: none; padding: 0; color: #c9d1d9; }}
+  ul, ol {{ padding-left: 24px; margin: 10px 0; }}
+  li {{ margin: 4px 0; }}
+  table {{ width: 100%; border-collapse: collapse; margin: 16px 0; }}
+  th {{ background: #161b22; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid #30363d; color: #f0f6fc; }}
+  td {{ padding: 8px 14px; border-bottom: 1px solid #21262d; }}
+  tr:hover td {{ background: #161b22; }}
+  hr {{ border: none; border-top: 1px solid #21262d; margin: 32px 0; }}
+  img {{ max-width: 100%; border-radius: 6px; }}
+  .deliverable-meta {{
+    background: #161b22; border: 1px solid #21262d; border-radius: 8px;
+    padding: 16px 20px; margin-bottom: 32px; font-size: 0.9em; color: #8b949e;
+  }}
+  .deliverable-meta strong {{ color: #c9d1d9; }}
+</style>
+</head>
+<body>
+<div class="deliverable-meta">
+  <strong>Deliverable:</strong> {file_path.name}<br>
+  <strong>Size:</strong> {file_path.stat().st_size / 1024:.1f} KB &nbsp;|&nbsp;
+  <strong>Generated:</strong> {datetime.fromtimestamp(file_path.stat().st_mtime, tz=timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}
+</div>
+{html_body}
+</body>
+</html>"""
+    return HTMLResponse(content=html_page)
+
+
+@router.get("/{idea_id}/deliverables/{filename:path}")
+async def get_deliverable_content(idea_id: str, filename: str) -> dict:
+    """Serve a deliverable file's full content. Catch-all — keep AFTER /html route."""
+    file_path = _resolve_deliverable_path(filename)
+    if file_path is None or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
 
     return {
         "name": file_path.name,
         "content": file_path.read_text(encoding="utf-8"),
         "size": file_path.stat().st_size,
     }
+
+
+# ── file helpers ───────────────────────────────────────────────────────────────
+
+
+def _resolve_deliverable_path(filename: str):
+    from pathlib import Path
+
+    deliverables_root = (Path(__file__).parent.parent.parent.parent.parent / "data" / "deliverables").resolve()
+    file_path = (deliverables_root / filename).resolve()
+    if not str(file_path).startswith(str(deliverables_root)):
+        return None
+    return file_path if file_path.exists() and file_path.is_file() else None
+
+
+def _markdown_to_html(md: str) -> str:
+    """Simple markdown-to-HTML converter."""
+    import re
+
+    lines = md.split('\n')
+    out = []
+    in_code_block = False
+    in_table = False
+    in_list = False
+    i = 0
+
+    while i < len(lines):
+        line = lines[i]
+
+        # Code block
+        if line.strip().startswith('```'):
+            if in_code_block:
+                out.append('</code></pre>')
+                in_code_block = False
+            else:
+                out.append('<pre><code>')
+                in_code_block = True
+            i += 1
+            continue
+        if in_code_block:
+            out.append(_escape_html(line))
+            i += 1
+            continue
+
+        # Table
+        if '|' in line and line.strip().startswith('|'):
+            if not in_table:
+                in_table = True
+                out.append('<table>')
+            cells = [c.strip() for c in line.strip().strip('|').split('|')]
+            # Check for separator row
+            if all(re.match(r'^[-:]+$', c) for c in cells):
+                i += 1
+                continue
+            tag = 'th' if in_table and (i + 1 < len(lines) and '|' in lines[i + 1] and all(re.match(r'^[-:]+$', c.strip()) for c in lines[i + 1].strip().strip('|').split('|'))) else 'td'
+            if tag == 'th':
+                out.append('<tr>' + ''.join(f'<th>{_inline_md(c)}</th>' for c in cells) + '</tr>')
+            else:
+                out.append('<tr>' + ''.join(f'<td>{_inline_md(c)}</td>' for c in cells) + '</tr>')
+            # If next line not a table row, close table
+            if i + 1 >= len(lines) or '|' not in lines[i + 1]:
+                out.append('</table>')
+                in_table = False
+            i += 1
+            continue
+
+        if in_table:
+            out.append('</table>')
+            in_table = False
+
+        # Headings
+        h_match = re.match(r'^(#{1,6})\s+(.+)$', line)
+        if h_match:
+            level = len(h_match.group(1))
+            out.append(f'<h{level}>{_inline_md(h_match.group(2))}</h{level}>')
+            i += 1
+            continue
+
+        # Blockquote
+        if line.startswith('> '):
+            bq_lines = []
+            while i < len(lines) and lines[i].startswith('> '):
+                bq_lines.append(lines[i][2:])
+                i += 1
+            bq_body = _markdown_to_html('\n'.join(bq_lines))
+            out.append(f'<blockquote>{bq_body}</blockquote>')
+            continue
+
+        # Horizontal rule
+        if re.match(r'^[-*_]{3,}$', line.strip()):
+            out.append('<hr>')
+            i += 1
+            continue
+
+        # Unordered list
+        ul_match = re.match(r'^(\s*)[-*+]\s+(.+)$', line)
+        if ul_match:
+            if not in_list or in_list != 'ul':
+                if in_list: out.append(f'</{in_list}>')
+                out.append('<ul>')
+                in_list = 'ul'
+            out.append(f'<li>{_inline_md(ul_match.group(2))}</li>')
+            i += 1
+            # If next line is not a list item, close
+            if i >= len(lines) or not re.match(r'^(\s*)[-*+]\s+', lines[i]):
+                out.append('</ul>')
+                in_list = False
+            continue
+
+        # Ordered list
+        ol_match = re.match(r'^(\s*)\d+[.)]\s+(.+)$', line)
+        if ol_match:
+            if not in_list or in_list != 'ol':
+                if in_list: out.append(f'</{in_list}>')
+                out.append('<ol>')
+                in_list = 'ol'
+            out.append(f'<li>{_inline_md(ol_match.group(2))}</li>')
+            i += 1
+            if i >= len(lines) or not re.match(r'^(\s*)\d+[.)]\s+', lines[i]):
+                out.append('</ol>')
+                in_list = False
+            continue
+
+        # Close any open list on blank line
+        if in_list and line.strip() == '':
+            out.append(f'</{in_list}>')
+            in_list = False
+            i += 1
+            continue
+
+        # Paragraph (non-empty)
+        if line.strip():
+            para_lines = [line]
+            i += 1
+            while i < len(lines) and lines[i].strip() and not lines[i].startswith('#') and not lines[i].startswith('>') and not lines[i].startswith('```') and not re.match(r'^[-*+]\s+', lines[i]) and not re.match(r'^\d+[.)]\s+', lines[i]) and not (in_table and '|' in lines[i]):
+                para_lines.append(lines[i])
+                i += 1
+            out.append(f'<p>{" ".join(_inline_md(l) for l in para_lines)}</p>')
+            continue
+
+        i += 1
+
+    if in_code_block: out.append('</code></pre>')
+    if in_table: out.append('</table>')
+    if in_list: out.append(f'</{in_list}>')
+
+    return '\n'.join(out)
+
+
+def _inline_md(text: str) -> str:
+    """Convert inline markdown to HTML."""
+    import re
+    # Bold
+    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+    # Italic
+    text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
+    # Inline code
+    text = re.sub(r'`([^`]+)`', r'<code>\1</code>', text)
+    # Links
+    text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', text)
+    return text
+
+
+def _escape_html(text: str) -> str:
+    """Escape HTML special chars."""
+    return text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
 
 # ── helpers ────────────────────────────────────────────────────────────────────
