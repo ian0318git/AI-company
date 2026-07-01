@@ -119,10 +119,18 @@ async def _auto_advance_if_all_done(session, project_id: str):
         .order_by(PipelineModel.created_at.desc())
     )
     pipelines = pipe_result.scalars().all()
-    # Prefer the active pipeline; if all are done there is nothing to advance
+    # Prefer the active pipeline; if all are done, mark the project as done
     pipeline = next((p for p in pipelines if p.current_phase != "done"), None)
     if pipeline is None:
-        return  # No active pipeline to advance
+        # All pipelines are done — mark the project as completed too
+        from ai_embedded_company.storage.models import ProjectModel
+        proj_result = await session.execute(
+            select(ProjectModel).where(ProjectModel.id == project_id)
+        )
+        project = proj_result.scalar_one_or_none()
+        if project and project.status == "active":
+            project.status = "completed"
+        return
 
     # Advance to next phase
     phase_order = ["idea", "requirements", "design", "implementation", "testing", "deploy", "done"]
@@ -130,15 +138,24 @@ async def _auto_advance_if_all_done(session, project_id: str):
     next_idx = min(current_idx + 1, len(phase_order) - 1)
     pipeline.current_phase = phase_order[next_idx]
 
-    # If advancing to "done", also mark the linked idea as done
-    if phase_order[next_idx] == "done" and pipeline.idea_id:
-        from ai_embedded_company.storage.models import IdeaModel
-        idea_result = await session.execute(
-            select(IdeaModel).where(IdeaModel.id == pipeline.idea_id)
+    # If advancing to "done", also mark the linked idea and project as done
+    if phase_order[next_idx] == "done":
+        if pipeline.idea_id:
+            from ai_embedded_company.storage.models import IdeaModel
+            idea_result = await session.execute(
+                select(IdeaModel).where(IdeaModel.id == pipeline.idea_id)
+            )
+            idea = idea_result.scalar_one_or_none()
+            if idea and idea.status != "done":
+                idea.status = "done"
+        # Mark the project as done
+        from ai_embedded_company.storage.models import ProjectModel
+        proj_result = await session.execute(
+            select(ProjectModel).where(ProjectModel.id == project_id)
         )
-        idea = idea_result.scalar_one_or_none()
-        if idea and idea.status != "done":
-            idea.status = "done"
+        project = proj_result.scalar_one_or_none()
+        if project and project.status == "active":
+            project.status = "completed"
 
 
 def _model_to_task(m: TaskModel) -> Task:

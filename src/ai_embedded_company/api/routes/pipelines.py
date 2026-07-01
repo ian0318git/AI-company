@@ -116,14 +116,23 @@ async def advance_pipeline(
 
     p.current_phase = new_phase
 
-    # Auto-complete linked idea when pipeline reaches "done"
-    if new_phase == "done" and p.idea_id:
-        idea_result = await session.execute(
-            select(IdeaModel).where(IdeaModel.id == p.idea_id)
+    # Auto-complete linked idea and project when pipeline reaches "done"
+    if new_phase == "done":
+        if p.idea_id:
+            idea_result = await session.execute(
+                select(IdeaModel).where(IdeaModel.id == p.idea_id)
+            )
+            idea = idea_result.scalar_one_or_none()
+            if idea and idea.status != "done":
+                idea.status = "done"
+        # Mark the project as done
+        from ai_embedded_company.storage.models import ProjectModel
+        proj_result = await session.execute(
+            select(ProjectModel).where(ProjectModel.id == p.project_id)
         )
-        idea = idea_result.scalar_one_or_none()
-        if idea and idea.status != "done":
-            idea.status = "done"
+        project = proj_result.scalar_one_or_none()
+        if project and project.status == "active":
+            project.status = "completed"
 
     await session.commit()
     await session.refresh(p)
