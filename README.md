@@ -103,16 +103,34 @@ Open **http://localhost:5173** — the dashboard proxies API calls to the backen
 | 📦 **Deliverables** | Actual output files attached to each idea. Firmware source code, research reports, pinout diagrams — rendered as styled HTML for comfortable reading. |
 | 🌐 **Bilingual UI** | English / 繁體中文 toggle. 100+ UI strings localized. Preferences saved across sessions. |
 
-### Example workflow
+### Case Studies
+
+#### Case 1: M5Stack Smart Garden (Embedded Firmware)
 
 ```
-Submit Idea           Refine              Start Pipeline       Track Progress
-    │                    │                      │                    │
-    ▼                    ▼                      ▼                    ▼
-"I want a smart    AI suggests         6-phase pipeline     Click tasks ✓
-garden monitor"    embedded-firmware    with 8 tasks +      Watch agents work
-                   pipeline             5-agent team        Deliverables land
-                                                            100% 🎉
+"I want a smart garden     →  AI suggests embedded-firmware pipeline
+ that auto-waters plants"     6 phases, 8 tasks, 5-agent team
+
+Deliverables:
+  📄 firmware.cpp (13 KB)  — Complete ESP32-S3 Arduino firmware
+  📄 platformio.ini         — Build configuration  
+  📄 pinout.md              — GPIO assignments + calibration table
+```
+
+#### Case 2: Enterprise AI Transformation Strategy (Business Debate)
+
+```
+"Should we replace 30% of    →  AI suggests quick-prototype pipeline
+ staff with AI agents?"          4-phase debate structure
+
+The debate:
+  🔴 Automation_Advocate argues for full AI replacement, 30% workforce reduction
+  🔵 Collaboration_Advocate argues for human-AI collaboration, zero layoffs  
+  ⚖️ CEO rules: "Human-AI Collaboration First" — upskill everyone, automate
+     only proven-safe workflows, start with 3 internal pilot projects
+
+Deliverables:
+  📄 debate.md (8 KB) — 4-dimension structured debate + 18-month roadmap
 ```
 
 ## 🧬 Self-Evolution
