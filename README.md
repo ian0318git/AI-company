@@ -41,6 +41,9 @@ Chairman (You)  →  CEO (Claude AI)  →  18 Specialized Agents
 | 📋 **5 Pipelines** | Firmware / Linux / Fullstack / Prototype / Research |
 | 💾 **Knowledge Base** | M5Stack, ESP32 pin definitions and code patterns built-in |
 | 🔒 **Zero External Cost** | No external API calls, fully local operation |
+| ⏱ **Time Tracking** | Automatic per-task elapsed time, pause/resume on status changes, per-agent breakdown |
+| 🪙 **Token Tracking** | Per-agent token consumption tracking, cumulative totals across projects |
+| 🧬 **Self-Evolution** | Auto-detect slow tasks, create failure records, trigger improvement cycles |
 
 ## 🚀 Quick Start
 
@@ -102,6 +105,10 @@ Open **http://localhost:5173** — the dashboard proxies API calls to the backen
 | 👥 **Team Roster** | See the assembled agent team for each project — who's idle, who's working. |
 | 📦 **Deliverables** | Actual output files attached to each idea. Firmware source code, research reports, pinout diagrams — rendered as styled HTML for comfortable reading. |
 | 🌐 **Bilingual UI** | English / 繁體中文 toggle. 100+ UI strings localized. Preferences saved across sessions. |
+| ⏱ **Time Tracking** | Every task tracks elapsed work time automatically. Pause/resume on blocked/review transitions. See cumulative time per agent across all projects. |
+| 🪙 **Token Usage** | Per-agent token consumption with progress bars. Track LLM costs at a glance — task-level, agent-level, and project-level totals. |
+| 🚨 **Slow Task Detection** | Tasks exceeding time thresholds (configurable, default 2h) auto-trigger the evolution system. Background monitor catches stuck in-progress tasks. |
+| 📊 **Project Time Analytics** | Each project shows total time, agent breakdown with mini-bars, and token usage per agent. Active projects panel on the Dashboard home. |
 
 ### Case Studies
 
@@ -139,7 +146,9 @@ The system doesn't just execute — it **evolves**. Every failure, every researc
 
 ### Failure Alchemy
 
-When a task fails, the system doesn't just log it. It performs **alchemy** — turning failure into three kinds of gold:
+When a task fails **or takes too long**, the system doesn't just log it. It performs **alchemy** — turning failure into three kinds of gold:
+
+> ⏱ **Auto-detection**: Tasks exceeding their time estimate × 2 (or global 120 min threshold) are automatically reported as timeout failures. The evolution system learns from slow tasks just as it learns from failures.
 
 | Output | What it is | How it works |
 |--------|-----------|--------------|
@@ -286,6 +295,26 @@ While you sleep:
 | `web-fullstack` | Idea → UI/UX → Frontend → Backend → Deploy |
 | `quick-prototype` | Idea → MVP → Iterate |
 | `research-spike` | Technology Research → Feasibility Report |
+
+## 💾 Database Safety
+
+The system auto-protects your data. Every server startup creates a timestamped backup.
+
+```bash
+# Manual backup
+uv run python scripts/db_tool.py backup
+
+# List all backups
+uv run python scripts/db_tool.py list
+
+# Interactive restore (with preview)
+uv run python scripts/db_tool.py restore
+
+# Check database status
+uv run python scripts/db_tool.py status
+```
+
+Backups live in `data/db_backups/`. Restore previews table counts before overwriting. Never lose data to accidental `rm` again.
 
 ## 🛠️ Development
 
