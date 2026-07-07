@@ -73,6 +73,8 @@ class TaskModel(Base):
     """When the current pause period started, if the timer is currently paused."""
     estimated_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
     """Optional estimated effort in minutes."""
+    tokens_used: Mapped[int] = mapped_column(Integer, default=0)
+    """Total tokens consumed by agents working on this task."""
 
     project: Mapped["ProjectModel"] = relationship(back_populates="tasks")
     subtasks: Mapped[list["TaskModel"]] = relationship(

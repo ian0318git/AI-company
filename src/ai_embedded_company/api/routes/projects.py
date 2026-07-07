@@ -102,9 +102,11 @@ async def get_project_time(
 
     total_minutes = 0.0
     agent_time: dict[str, float] = {}
+    agent_tokens: dict[str, int] = {}
     status_counts: dict[str, int] = {}
     tracked_tasks = 0
     completed_tasks = 0
+    total_tokens = 0
 
     for task in tasks:
         # Status counts
@@ -124,11 +126,19 @@ async def get_project_time(
         # Per-agent aggregation
         agent = task.assigned_agent or "unassigned"
         agent_time[agent] = agent_time.get(agent, 0.0) + elapsed
+        tokens = task.tokens_used or 0
+        agent_tokens[agent] = agent_tokens.get(agent, 0) + tokens
+        total_tokens += tokens
 
     # Format agent breakdown
     agent_breakdown = [
         {"agent": agent, "minutes": round(minutes, 1)}
         for agent, minutes in sorted(agent_time.items(), key=lambda x: -x[1])
+    ]
+
+    token_breakdown = [
+        {"agent": agent, "tokens": t}
+        for agent, t in sorted(agent_tokens.items(), key=lambda x: -x[1])
     ]
 
     return {
@@ -141,6 +151,8 @@ async def get_project_time(
         "total_minutes": round(total_minutes, 1),
         "total_minutes_formatted": _format_minutes(total_minutes),
         "agent_breakdown": agent_breakdown,
+        "token_breakdown": token_breakdown,
+        "total_tokens": total_tokens,
         "status_counts": status_counts,
         "created_at": project.created_at.isoformat() if project.created_at else None,
         "completed_at": project.updated_at.isoformat() if project.status == "completed" else None,

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api/client'
-import { Cpu, ListTodo, Lightbulb, GitBranch, Clock, AlertTriangle, CheckCircle, Users, FolderOpen } from 'lucide-react'
+import { Cpu, ListTodo, Lightbulb, GitBranch, Clock, AlertTriangle, CheckCircle, Users, FolderOpen, Coins } from 'lucide-react'
 import { useTaskMetrics } from '../hooks/useTaskTime'
 
 function formatMinutes(m: number): string {
@@ -25,6 +25,8 @@ interface ProjectTime {
   tracked_tasks: number
   completed_tasks: number
   agent_breakdown: AgentTime[]
+  token_breakdown: { agent: string; tokens: number }[]
+  total_tokens: number
   status_counts: Record<string, number>
 }
 
@@ -141,6 +143,33 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Token Usage */}
+      {metrics && metrics.token_breakdown && metrics.token_breakdown.length > 0 && (
+        <div className="border border-[hsl(var(--border))] rounded-lg p-4 bg-white/5 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Coins className="w-5 h-5 text-yellow-400" />
+            <h3 className="text-lg font-semibold text-gray-200">Token Usage</h3>
+            <span className="text-sm text-gray-500 ml-auto">
+              Total: {(metrics.total_tokens || 0).toLocaleString()}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {metrics.token_breakdown.map((a: { agent: string; tokens: number }) => (
+              <div key={a.agent} className="flex items-center justify-between text-sm">
+                <span className="text-gray-300">{agentLabels[a.agent] || a.agent}</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-32 h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-yellow-500 rounded-full"
+                         style={{ width: `${Math.min(100, (a.tokens / (metrics.token_breakdown[0]?.tokens || 1)) * 100)}%` }} />
+                  </div>
+                  <span className="text-gray-400 font-mono w-24 text-right">{a.tokens.toLocaleString()}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Agent Time Breakdown */}
       {metrics && metrics.agent_breakdown && metrics.agent_breakdown.length > 0 && (
         <div className="border border-[hsl(var(--border))] rounded-lg p-4 bg-white/5 mb-6">
@@ -184,19 +213,24 @@ export default function Dashboard() {
                     )}
                   </div>
                   {pt && (
-                    <div className="grid grid-cols-3 gap-2 text-xs text-gray-500">
+                    <div className="grid grid-cols-4 gap-2 text-xs text-gray-500">
                       <span>📋 {pt.total_tasks} tasks</span>
                       <span>⏱ {pt.tracked_tasks} tracked</span>
                       <span>✅ {pt.completed_tasks} done</span>
+                      <span>🪙 {pt.total_tokens.toLocaleString()} tokens</span>
                     </div>
                   )}
                   {pt && pt.agent_breakdown.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
-                      {pt.agent_breakdown.map((a: AgentTime) => (
-                        <span key={a.agent} className="text-[10px] px-2 py-0.5 rounded bg-white/10 text-gray-400">
-                          {agentLabels[a.agent] || a.agent}: {formatMinutes(a.minutes)}
-                        </span>
-                      ))}
+                      {pt.agent_breakdown.map((a: AgentTime) => {
+                        const tokens = pt.token_breakdown?.find(t => t.agent === a.agent)
+                        return (
+                          <span key={a.agent} className="text-[10px] px-2 py-0.5 rounded bg-white/10 text-gray-400">
+                            {agentLabels[a.agent] || a.agent}: {formatMinutes(a.minutes)}
+                            {tokens ? ` / ${tokens.tokens.toLocaleString()}🪙` : ''}
+                          </span>
+                        )
+                      })}
                     </div>
                   )}
                 </div>

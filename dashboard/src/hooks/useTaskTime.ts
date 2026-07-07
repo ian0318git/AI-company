@@ -11,6 +11,8 @@ export interface TaskMetrics {
   slow_tasks: { id: string; title: string; elapsed_minutes: number }[]
   active_tasks: { id: string; title: string; elapsed_minutes: number; is_slow: boolean }[]
   agent_breakdown: { agent: string; minutes: number }[]
+  token_breakdown: { agent: string; tokens: number }[]
+  total_tokens: number
   status_counts: Record<string, number>
 }
 

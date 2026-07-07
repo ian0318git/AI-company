@@ -167,6 +167,21 @@ def register_tools(mcp):
         return await _api_call("GET", f"/api/tasks/{task_id}/time")
 
     @mcp.tool()
+    async def task_log_tokens(task_id: str, tokens: int, agent: str = "") -> dict:
+        """Log token usage for a task. Agents call this to report consumed tokens.
+
+        Tokens are accumulated on the task record and tracked per agent.
+        Call this after completing a unit of work (e.g., writing code, analysis).
+
+        Args:
+            task_id: The task UUID
+            tokens: Number of tokens consumed (must be non-negative)
+            agent: Agent role that consumed the tokens (e.g., "tech-lead")
+        """
+        body = {"tokens": tokens, "agent": agent or "unknown"}
+        return await _api_call("POST", f"/api/tasks/{task_id}/tokens", json_data=body)
+
+    @mcp.tool()
     async def task_auto_assign(task_id: str) -> dict:
         """Suggest the best agent for a task based on its description.
 

@@ -135,6 +135,7 @@ class Task(TaskBase):
     paused_seconds: int = 0
     last_paused_at: Optional[datetime] = None
     estimated_minutes: Optional[int] = None
+    tokens_used: int = 0
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

@@ -140,6 +140,14 @@ export default function IdeaInbox() {
 
     return (
       <div className="border border-t-0 border-[hsl(var(--border))] rounded-b p-5 bg-white/[0.03] -mt-px space-y-5">
+        {/* Idea Description (full) */}
+        {wf.idea.raw_description && (
+          <div className="border border-[hsl(var(--border))] rounded p-3 bg-black/20">
+            <p className="text-xs text-gray-500 mb-1">{tr('general.description')}</p>
+            <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{wf.idea.raw_description}</p>
+          </div>
+        )}
+
         {/* Overall Progress */}
         <div className="flex items-center gap-4">
           <div className="flex-1">
@@ -481,7 +489,7 @@ export default function IdeaInbox() {
                         {tr(`status.${idea.status}`) || idea.status}
                       </span>
                     </div>
-                    {idea.raw_description && <p className="text-sm text-gray-400 line-clamp-2 mb-2">{idea.raw_description}</p>}
+                    {idea.raw_description && <p className="text-sm text-gray-400 line-clamp-4 mb-2">{idea.raw_description}</p>}
                     <div className="flex items-center gap-2 flex-wrap">
                       {idea.tags?.map(tag => <span key={tag} className="text-sm px-1.5 py-0.5 bg-white/10 rounded text-gray-400">{tag}</span>)}
                       {idea.suggested_pipeline && (

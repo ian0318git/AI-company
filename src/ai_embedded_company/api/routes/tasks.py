@@ -196,7 +196,9 @@ async def task_metrics(
     slow_tasks: list[dict] = []
     active_tasks: list[dict] = []
     agent_time: dict[str, float] = {}
+    agent_tokens: dict[str, int] = {}
     status_counts: dict[str, int] = {}
+    total_tokens = 0
 
     settings = get_settings()
     global_threshold = float(settings.slow_task_threshold_minutes)
@@ -227,6 +229,11 @@ async def task_metrics(
         # Per-agent time
         agent = task.assigned_agent or "unassigned"
         agent_time[agent] = agent_time.get(agent, 0.0) + elapsed
+
+        # Per-agent tokens
+        tokens = task.tokens_used or 0
+        agent_tokens[agent] = agent_tokens.get(agent, 0) + tokens
+        total_tokens += tokens
 
         # Slow task check (only for in_progress tasks)
         if task.status == "in_progress":
@@ -259,6 +266,12 @@ async def task_metrics(
         for agent, m in sorted(agent_time.items(), key=lambda x: -x[1])
     ]
 
+    # Token breakdown per agent
+    token_breakdown = [
+        {"agent": agent, "tokens": t}
+        for agent, t in sorted(agent_tokens.items(), key=lambda x: -x[1])
+    ]
+
     return {
         "total_tasks_tracked": sum(1 for t in tasks if t.started_at),
         "today_minutes": round(today_minutes, 1),
@@ -269,6 +282,8 @@ async def task_metrics(
         "slow_tasks": slow_tasks,
         "active_tasks": active_tasks,
         "agent_breakdown": agent_breakdown,
+        "token_breakdown": token_breakdown,
+        "total_tokens": total_tokens,
         "status_counts": status_counts,
     }
 
@@ -389,7 +404,55 @@ async def update_task_status(
     return _model_to_task(model)
 
 
-# ── Catch-all: GET /{task_id} (must be last to not shadow /metrics, /{id}/time, /{id}/status) ──
+@router.post("/{task_id}/tokens")
+async def log_task_tokens(
+    task_id: str,
+    body: dict,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Log token usage for a task.
+
+    Agents call this to report how many tokens they consumed.
+    Tokens are accumulated (additive) on the task record.
+
+    Request body: {"tokens": 1500, "agent": "tech-lead"}
+    """
+    tokens = body.get("tokens", 0)
+    agent = body.get("agent", "unknown")
+
+    result = await session.execute(
+        select(TaskModel).where(TaskModel.id == task_id)
+    )
+    model = result.scalar_one_or_none()
+    if model is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    if not isinstance(tokens, int) or tokens < 0:
+        raise HTTPException(status_code=400, detail="tokens must be a non-negative integer")
+
+    model.tokens_used = (model.tokens_used or 0) + tokens
+
+    # Also log to event_log for audit trail
+    from ai_embedded_company.storage.models import EventLogModel
+    log = EventLogModel(
+        event_type="token_usage",
+        source=f"task:{task_id}",
+        payload=json.dumps({"tokens": tokens, "agent": agent, "total": model.tokens_used}),
+    )
+    session.add(log)
+
+    await session.commit()
+    await session.refresh(model)
+
+    return {
+        "task_id": model.id,
+        "tokens_added": tokens,
+        "tokens_total": model.tokens_used,
+        "agent": agent,
+    }
+
+
+# ── Catch-all: GET /{task_id} (must be last to not shadow other routes) ──
 
 
 @router.get("/{task_id}", response_model=Task)
@@ -486,6 +549,7 @@ def _model_to_task(m: TaskModel) -> Task:
         paused_seconds=m.paused_seconds or 0,
         last_paused_at=m.last_paused_at,
         estimated_minutes=m.estimated_minutes,
+        tokens_used=m.tokens_used or 0,
         created_at=m.created_at,
         updated_at=m.updated_at,
     )
