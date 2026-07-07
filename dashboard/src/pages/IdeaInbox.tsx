@@ -461,7 +461,7 @@ export default function IdeaInbox() {
 
   const checkAutoStatus = useCallback(async () => {
     try {
-      const r = await fetch('/api/autonomous').then(res => res.json())
+      const r = await fetch('/autonomous').then(res => res.json())
       setAutoStatus(r)
     } catch { /* ignore */ }
     finally { setAutoLoading(false) }
@@ -471,7 +471,7 @@ export default function IdeaInbox() {
 
   const handleToggleAuto = async () => {
     try {
-      await fetch('/api/autonomous/stop', { method: 'POST' })
+      await fetch('/autonomous/stop', { method: 'POST' })
       setAutoStatus(prev => prev ? { ...prev, status: 'stopped' } : { status: 'stopped' })
       checkAutoStatus()
     } catch { /* ignore */ }
@@ -508,7 +508,7 @@ export default function IdeaInbox() {
         ) : (
           <button onClick={async () => {
             try {
-              const r = await fetch('/api/autonomous/start', { method: 'POST' }).then(res => res.json())
+              const r = await fetch('/autonomous/start', { method: 'POST' }).then(res => res.json())
               if (r.status === 'started') {
                 setAutoStatus({ status: 'running', pid: r.pid })
               }
