@@ -112,6 +112,27 @@ export default function IdeaInbox() {
     try { await api.tasks.updateStatus(taskId, next); const wf = await api.ideas.workflow(ideaId); setWorkflows(p => ({ ...p, [ideaId]: wf })) } catch (e) { console.warn('[IdeaInbox] taskToggle', e) }
   }
 
+  const handleStartExecution = async (ideaId: string, tasks: any[]) => {
+    // Find first todo task and set it to in_progress
+    const firstTodo = tasks.find(t => t.status === 'todo')
+    if (!firstTodo) return
+    try {
+      await api.tasks.updateStatus(firstTodo.id, 'in_progress')
+      const wf = await api.ideas.workflow(ideaId)
+      setWorkflows(p => ({ ...p, [ideaId]: wf }))
+    } catch (e) { console.warn('[IdeaInbox] startExecution', e) }
+  }
+
+  const handleExecuteTask = async (ideaId: string, taskId: string, status: string) => {
+    // Set a specific task to in_progress (if todo) or done (if in_progress)
+    const next = status === 'todo' ? 'in_progress' : 'done'
+    try {
+      await api.tasks.updateStatus(taskId, next)
+      const wf = await api.ideas.workflow(ideaId)
+      setWorkflows(p => ({ ...p, [ideaId]: wf }))
+    } catch (e) { console.warn('[IdeaInbox] executeTask', e) }
+  }
+
   const handleAdvancePhase = async (ideaId: string, pipelineId: string) => {
     try { await api.pipelines.advance(pipelineId); const wf = await api.ideas.workflow(ideaId); setWorkflows(p => ({ ...p, [ideaId]: wf })) } catch (e) { console.warn('[IdeaInbox] advancePhase', e) }
   }
@@ -215,6 +236,14 @@ export default function IdeaInbox() {
                 <CheckCircle2 className="w-4 h-4" /> {tr('wf.allPhasesComplete')}
               </p>
             )}
+
+            {/* Start Execution button — when tasks exist and not all done */}
+            {pipeline.current_phase !== 'done' && taskCounts.todo > 0 && (
+              <button onClick={e => { e.stopPropagation(); handleStartExecution(wf.idea.id, tasks) }}
+                      className="mt-3 flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-medium transition-colors w-full justify-center">
+                <Play className="w-4 h-4" /> Start Execution
+              </button>
+            )}
           </div>
         )}
 
@@ -242,6 +271,17 @@ export default function IdeaInbox() {
                     <span className={`truncate ${task.status === 'done' ? 'text-gray-500 line-through' : 'text-gray-300'}`}>{task.title}</span>
                     {task.assigned_agent && (
                       <span className="text-xs text-gray-500 ml-auto shrink-0">{tr(`agent.${task.assigned_agent}`) || task.assigned_agent}</span>
+                    )}
+                    {/* Run button for actionable tasks */}
+                    {task.status !== 'done' && (
+                      <button onClick={e => { e.stopPropagation(); handleExecuteTask(wf.idea.id, task.id, task.status) }}
+                              className={`text-[10px] px-1.5 py-0.5 rounded font-medium opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ${
+                                task.status === 'todo'
+                                  ? 'bg-green-700/50 text-green-300 hover:bg-green-600/50'
+                                  : 'bg-blue-700/50 text-blue-300 hover:bg-blue-600/50'
+                              }`}>
+                        {task.status === 'todo' ? '▶ Run' : '⏹ Done'}
+                      </button>
                     )}
                   </li>
                 ))}
