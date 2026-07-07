@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Lightbulb, Send, Loader2, AlertCircle, ChevronDown, ChevronUp,
   Sparkles, Play, CheckCircle2, Circle, Clock, Users, ListTodo,
@@ -110,17 +110,6 @@ export default function IdeaInbox() {
   const handleTaskToggle = async (ideaId: string, taskId: string, s: string) => {
     const next = s === 'todo' ? 'in_progress' : s === 'in_progress' ? 'done' : 'todo'
     try { await api.tasks.updateStatus(taskId, next); const wf = await api.ideas.workflow(ideaId); setWorkflows(p => ({ ...p, [ideaId]: wf })) } catch (e) { console.warn('[IdeaInbox] taskToggle', e) }
-  }
-
-  const handleStartExecution = async (ideaId: string, tasks: any[]) => {
-    // Find first todo task and set it to in_progress
-    const firstTodo = tasks.find(t => t.status === 'todo')
-    if (!firstTodo) return
-    try {
-      await api.tasks.updateStatus(firstTodo.id, 'in_progress')
-      const wf = await api.ideas.workflow(ideaId)
-      setWorkflows(p => ({ ...p, [ideaId]: wf }))
-    } catch (e) { console.warn('[IdeaInbox] startExecution', e) }
   }
 
   const handleExecuteTask = async (ideaId: string, taskId: string, status: string) => {
@@ -237,13 +226,6 @@ export default function IdeaInbox() {
               </p>
             )}
 
-            {/* Start Execution button — when tasks exist and not all done */}
-            {pipeline.current_phase !== 'done' && taskCounts.todo > 0 && (
-              <button onClick={e => { e.stopPropagation(); handleStartExecution(wf.idea.id, tasks) }}
-                      className="mt-3 flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-medium transition-colors w-full justify-center">
-                <Play className="w-4 h-4" /> Start Execution
-              </button>
-            )}
           </div>
         )}
 
@@ -473,8 +455,61 @@ export default function IdeaInbox() {
     )
   }
 
+  // ── Autonomous scheduler state ──
+  const [autoStatus, setAutoStatus] = useState<{ status: string; pid?: number; uptime_seconds?: number } | null>(null)
+  const [autoLoading, setAutoLoading] = useState(true)
+
+  const checkAutoStatus = useCallback(async () => {
+    try {
+      const r = await fetch('/api/autonomous').then(res => res.json())
+      setAutoStatus(r)
+    } catch { /* ignore */ }
+    finally { setAutoLoading(false) }
+  }, [])
+
+  useEffect(() => { checkAutoStatus(); const id = setInterval(checkAutoStatus, 10000); return () => clearInterval(id) }, [checkAutoStatus])
+
+  const handleToggleAuto = async () => {
+    if (autoStatus?.status === 'running') {
+      // Stop: kill autonomous process
+      try {
+        await fetch('/api/autonomous/stop', { method: 'POST' })
+        setAutoStatus(prev => prev ? { ...prev, status: 'stopped' } : { status: 'stopped' })
+      } catch { /* ignore */ }
+    }
+  }
+
   return (
     <div className="max-w-2xl">
+      {/* Global Auto-Schedule Status Bar */}
+      <div className={`border rounded-lg p-3 mb-6 flex items-center gap-3 ${
+        autoStatus?.status === 'running' ? 'border-green-500/30 bg-green-500/5' : 'border-gray-600/30 bg-white/5'
+      }`}>
+        <div className={`w-3 h-3 rounded-full ${autoStatus?.status === 'running' ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
+        <div className="flex-1">
+          <span className="text-sm font-medium">
+            {autoStatus?.status === 'running' ? 'Auto Schedule: Running' : 'Auto Schedule: Stopped'}
+          </span>
+          {autoStatus?.status === 'running' && autoStatus.uptime_seconds && (
+            <span className="text-xs text-gray-400 ml-2">
+              (pid {autoStatus.pid} · uptime {Math.floor(autoStatus.uptime_seconds / 60)}m)
+            </span>
+          )}
+        </div>
+        {autoStatus?.status === 'running' ? (
+          <span className="text-xs text-green-400">● Running</span>
+        ) : (
+          <button onClick={() => {
+            const cmd = "cd /home/ian/github-project/AI-company && ./scripts/autonomous.sh"
+            navigator.clipboard?.writeText(cmd)
+            alert(`Copy this to your terminal:\n\n  ${cmd}\n\n(already copied to clipboard)`)
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 rounded text-sm font-medium transition-colors">
+            <Play className="w-3.5 h-3.5" /> Start Auto Schedule
+          </button>
+        )}
+      </div>
+
       <h2 className="text-3xl font-bold mb-6">{tr('idea.title')}</h2>
 
       {/* New Idea Form */}

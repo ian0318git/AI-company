@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import json
+import os
 import platform
+import subprocess
+from datetime import datetime
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +17,104 @@ from ai_embedded_company.storage.models import EventLogModel
 from ai_embedded_company.__init__ import __version__
 
 router = APIRouter()
+
+AUTONOMOUS_LOCK = Path("/tmp/ai-company-autonomous.lock")
+
+
+@router.get("/autonomous")
+async def autonomous_status() -> dict:
+    """Check if autonomous.sh is running and return its status."""
+    pid = None
+    uptime_seconds = None
+    status = "stopped"
+
+    # Check lock file first (written by autonomous.sh)
+    if AUTONOMOUS_LOCK.exists():
+        try:
+            data = json.loads(AUTONOMOUS_LOCK.read_text())
+            pid = data.get("pid")
+            started_at = data.get("started_at")
+            if started_at:
+                uptime_seconds = int((datetime.utcnow() - datetime.fromisoformat(started_at)).total_seconds())
+            # Verify the process is actually alive
+            if pid:
+                alive = os.path.exists(f"/proc/{pid}") if os.name != "nt" else True
+                if not alive:
+                    pid = None
+                    uptime_seconds = None
+                    status = "stopped"
+                else:
+                    status = "running"
+        except Exception:
+            pass
+
+    # Fallback: check for claude --loop or autonomous processes
+    if status == "stopped":
+        try:
+            result = subprocess.run(
+                ["pgrep", "-af", "autonomous\\|claude.*--loop"],
+                capture_output=True, text=True, timeout=3
+            )
+            lines = [l.strip() for l in result.stdout.split("\n") if l.strip()]
+            # Filter out the current process
+            my_pid = str(os.getpid())
+            lines = [l for l in lines if not l.startswith(my_pid)]
+            if lines:
+                status = "running"
+                parts = lines[0].split(None, 1)
+                if parts:
+                    pid = int(parts[0])
+        except Exception:
+            pass
+
+    return {
+        "status": status,
+        "pid": pid,
+        "uptime_seconds": uptime_seconds,
+        "command": "cd /home/ian/github-project/AI-company && ./scripts/autonomous.sh",
+    }
+
+
+@router.post("/autonomous/stop")
+async def autonomous_stop() -> dict:
+    """Stop the autonomous scheduler."""
+    killed = 0
+
+    # Kill by lock file
+    if AUTONOMOUS_LOCK.exists():
+        try:
+            data = json.loads(AUTONOMOUS_LOCK.read_text())
+            pid = data.get("pid")
+            if pid:
+                try:
+                    os.kill(pid, 15)  # SIGTERM
+                    killed += 1
+                except (ProcessLookupError, PermissionError, OSError):
+                    pass
+            AUTONOMOUS_LOCK.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    # Kill by process name
+    try:
+        result = subprocess.run(
+            ["pgrep", "-af", "autonomous\\.sh\\|claude.*--loop"],
+            capture_output=True, text=True, timeout=3
+        )
+        for line in result.stdout.strip().split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            pid_str = line.split()[0]
+            try:
+                os.kill(int(pid_str), 15)
+                killed += 1
+            except (ProcessLookupError, PermissionError, OSError, ValueError):
+                pass
+    except Exception:
+        pass
+
+    return {"status": "stopped", "processes_killed": killed}
 
 
 @router.get("/health")
