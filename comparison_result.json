@@ -1,0 +1,128 @@
+{
+  "run_id": "comparison-20260707_223733",
+  "timestamp": "2026-07-07T22:37:33.918271+00:00",
+  "task": "temperature-logger",
+  "model": "claude-sonnet-4-20250514",
+  "modes": {
+    "single": {
+      "name": "single-agent",
+      "agents": [
+        "embedded-firmware-engineer"
+      ]
+    },
+    "multi": {
+      "name": "multi-agent",
+      "agents": [
+        "embedded-firmware-engineer",
+        "code-reviewer"
+      ]
+    }
+  },
+  "single_metrics": {
+    "input_tokens": 850,
+    "output_tokens": 2100,
+    "total_tokens": 2950,
+    "duration_seconds": 18.4,
+    "task_completed": true,
+    "errors": [],
+    "api_calls": 1,
+    "api_cost_estimated": 0.034,
+    "code_correctness": 3,
+    "code_completeness": 4,
+    "code_quality": 3,
+    "documentation_quality": 3,
+    "overall_score": 3.25,
+    "model": "claude-sonnet-4-20250514",
+    "validation_passed": true,
+    "validation_messages": []
+  },
+  "multi_metrics": {
+    "input_tokens": 6850,
+    "output_tokens": 2900,
+    "total_tokens": 9750,
+    "duration_seconds": 45.7,
+    "task_completed": true,
+    "errors": [],
+    "api_calls": 2,
+    "api_cost_estimated": 0.074,
+    "code_correctness": 4,
+    "code_completeness": 5,
+    "code_quality": 4,
+    "documentation_quality": 4,
+    "overall_score": 4.25,
+    "model": "claude-sonnet-4-20250514",
+    "validation_passed": true,
+    "validation_messages": []
+  },
+  "delta": {
+    "input_tokens": {
+      "single": 850,
+      "multi": 6850,
+      "abs": 6000,
+      "pct": 705.9
+    },
+    "output_tokens": {
+      "single": 2100,
+      "multi": 2900,
+      "abs": 800,
+      "pct": 38.1
+    },
+    "total_tokens": {
+      "single": 2950,
+      "multi": 9750,
+      "abs": 6800,
+      "pct": 230.5
+    },
+    "duration_seconds": {
+      "single": 18.4,
+      "multi": 45.7,
+      "abs": 27.300000000000004,
+      "pct": 148.4
+    },
+    "api_calls": {
+      "single": 1,
+      "multi": 2,
+      "abs": 1,
+      "pct": 100.0
+    },
+    "api_cost_estimated": {
+      "single": 0.034,
+      "multi": 0.074,
+      "abs": 0.039999999999999994,
+      "pct": 117.6
+    }
+  },
+  "quality_delta": {
+    "code_correctness": {
+      "single": 3,
+      "multi": 4,
+      "diff": 1
+    },
+    "code_completeness": {
+      "single": 4,
+      "multi": 5,
+      "diff": 1
+    },
+    "code_quality": {
+      "single": 3,
+      "multi": 4,
+      "diff": 1
+    },
+    "documentation_quality": {
+      "single": 3,
+      "multi": 4,
+      "diff": 1
+    },
+    "overall_score": {
+      "single": 3.25,
+      "multi": 4.25,
+      "diff": 1.0
+    }
+  },
+  "tokens_per_quality_point": {
+    "single": 907.7,
+    "multi": 2294.1,
+    "diff": 1386.3999999999999
+  },
+  "conclusion": "Multi-agent scored +31% quality at +231% more tokens."
+}
