@@ -470,25 +470,29 @@ export default function IdeaInbox() {
   useEffect(() => { checkAutoStatus(); const id = setInterval(checkAutoStatus, 10000); return () => clearInterval(id) }, [checkAutoStatus])
 
   const handleToggleAuto = async () => {
-    if (autoStatus?.status === 'running') {
-      // Stop: kill autonomous process
-      try {
-        await fetch('/api/autonomous/stop', { method: 'POST' })
-        setAutoStatus(prev => prev ? { ...prev, status: 'stopped' } : { status: 'stopped' })
-      } catch { /* ignore */ }
-    }
+    try {
+      await fetch('/api/autonomous/stop', { method: 'POST' })
+      setAutoStatus(prev => prev ? { ...prev, status: 'stopped' } : { status: 'stopped' })
+      checkAutoStatus()
+    } catch { /* ignore */ }
   }
 
   return (
     <div className="max-w-2xl">
       {/* Global Auto-Schedule Status Bar */}
       <div className={`border rounded-lg p-3 mb-6 flex items-center gap-3 ${
-        autoStatus?.status === 'running' ? 'border-green-500/30 bg-green-500/5' : 'border-gray-600/30 bg-white/5'
+        autoStatus?.status === 'running'
+          ? 'border-green-500/30 bg-green-500/5'
+          : 'border-red-500/30 bg-red-500/5'
       }`}>
-        <div className={`w-3 h-3 rounded-full ${autoStatus?.status === 'running' ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
+        <div className={`w-3 h-3 rounded-full shrink-0 ${
+          autoStatus?.status === 'running' ? 'bg-green-500 animate-pulse shadow-lg shadow-green-500/50' : 'bg-red-500'
+        }`} />
         <div className="flex-1">
-          <span className="text-sm font-medium">
-            {autoStatus?.status === 'running' ? 'Auto Schedule: Running' : 'Auto Schedule: Stopped'}
+          <span className={`text-sm font-medium ${
+            autoStatus?.status === 'running' ? 'text-green-400' : 'text-red-400'
+          }`}>
+            {autoStatus?.status === 'running' ? '● Auto Schedule: Running' : '● Auto Schedule: Stopped'}
           </span>
           {autoStatus?.status === 'running' && autoStatus.uptime_seconds && (
             <span className="text-xs text-gray-400 ml-2">
@@ -497,12 +501,18 @@ export default function IdeaInbox() {
           )}
         </div>
         {autoStatus?.status === 'running' ? (
-          <span className="text-xs text-green-400">● Running</span>
+          <button onClick={handleToggleAuto}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-500 rounded text-sm font-medium transition-colors">
+            Stop
+          </button>
         ) : (
-          <button onClick={() => {
-            const cmd = "cd /home/ian/github-project/AI-company && ./scripts/autonomous.sh"
-            navigator.clipboard?.writeText(cmd)
-            alert(`Copy this to your terminal:\n\n  ${cmd}\n\n(already copied to clipboard)`)
+          <button onClick={async () => {
+            try {
+              const r = await fetch('/api/autonomous/start', { method: 'POST' }).then(res => res.json())
+              if (r.status === 'started') {
+                setAutoStatus({ status: 'running', pid: r.pid })
+              }
+            } catch { /* ignore */ }
           }}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 rounded text-sm font-medium transition-colors">
             <Play className="w-3.5 h-3.5" /> Start Auto Schedule

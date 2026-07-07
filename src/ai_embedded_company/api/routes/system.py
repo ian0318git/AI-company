@@ -75,6 +75,34 @@ async def autonomous_status() -> dict:
     }
 
 
+@router.post("/autonomous/start")
+async def autonomous_start() -> dict:
+    """Start the autonomous scheduler in the background."""
+    script_path = Path.cwd() / "scripts" / "autonomous.sh"
+    if not script_path.exists():
+        return {"status": "error", "message": f"Script not found: {script_path}"}
+
+    try:
+        process = subprocess.Popen(
+            ["bash", str(script_path)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        # Write lock file
+        AUTONOMOUS_LOCK.write_text(json.dumps({
+            "pid": process.pid,
+            "started_at": datetime.utcnow().isoformat(),
+        }))
+        return {
+            "status": "started",
+            "pid": process.pid,
+            "message": f"Autonomous scheduler started (pid {process.pid})",
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 @router.post("/autonomous/stop")
 async def autonomous_stop() -> dict:
     """Stop the autonomous scheduler."""
