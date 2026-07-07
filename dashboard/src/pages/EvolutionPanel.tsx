@@ -37,7 +37,7 @@ export default function EvolutionPanel() {
           fetch('/api/evolution/research').then(r => r.json()),
         ])
         setStatus(s); setFailures(f); setResearch(r)
-      } catch {} finally { setLoading(false) }
+      } catch (e) { console.warn('[EvolutionPanel]', e) } finally { setLoading(false) }
     })()
   }, [])
 

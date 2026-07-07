@@ -95,6 +95,18 @@ export const t: Record<Lang, Record<string, string>> = {
     'agent.code-reviewer': 'Code Reviewer',
     'agent.rapid-prototyper': 'Rapid Prototyper',
 
+    // Time Tracking
+    'time.todayTracked': 'Today Tracked',
+    'time.avgTime': 'Avg Task Time',
+    'time.activeTasks': 'Active Tasks',
+    'time.slowTasks': 'Slow Tasks',
+    'time.slowTasksAlert': 'Slow Tasks Alert',
+    'time.elapsed': 'Elapsed',
+    'time.slow': 'SLOW',
+    'time.paused': 'Paused',
+    'time.minutes': 'm',
+    'time.hours': 'h',
+
     // General
     'general.notDetermined': 'Not yet determined',
     'general.noTasks': 'No tasks yet',
@@ -198,6 +210,18 @@ export const t: Record<Lang, Record<string, string>> = {
     'agent.security-engineer': '安全工程師',
     'agent.code-reviewer': '程式碼審查員',
     'agent.rapid-prototyper': '快速原型師',
+
+    // Time Tracking
+    'time.todayTracked': '今日追蹤',
+    'time.avgTime': '平均任務時間',
+    'time.activeTasks': '進行中任務',
+    'time.slowTasks': '緩慢任務',
+    'time.slowTasksAlert': '緩慢任務警示',
+    'time.elapsed': '已用時間',
+    'time.slow': '緩慢',
+    'time.paused': '已暫停',
+    'time.minutes': '分',
+    'time.hours': '時',
 
     // General
     'general.notDetermined': '尚未決定',

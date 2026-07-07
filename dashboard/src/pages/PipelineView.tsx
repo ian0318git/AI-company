@@ -8,7 +8,7 @@ export default function PipelineView() {
   useEffect(() => {
     api.pipelines.list().then((data: any) => {
       setPipelines(Array.isArray(data) ? data : [])
-    }).catch(() => {})
+    }).catch(e => console.warn('[PipelineView]', e))
   }, [])
 
   return (

@@ -6,6 +6,34 @@
 - **Python 版本**: >= 3.11
 - **套件管理**: `uv sync` (uv 環境管理)
 
+## 💾 資料庫保護 (Database Safety)
+
+資料庫位於 `data/ai_embedded_company.db`，**嚴禁直接刪除**。schema 變更應使用 Alembic migration。
+
+### 備份與還原
+
+```bash
+# 建立備份
+uv run python scripts/db_tool.py backup
+
+# 列出所有備份
+uv run python scripts/db_tool.py list
+
+# 還原備份（互動模式）
+uv run python scripts/db_tool.py restore
+
+# 還原指定備份
+uv run python scripts/db_tool.py restore 20260707_120000
+
+# 查看資料庫狀態
+uv run python scripts/db_tool.py status
+```
+
+### 自動保護機制
+- 伺服器啟動時自動在 `data/db_backups/` 建立時間戳備份
+- 還原前自動備份當前資料庫
+- 備份檔案永遠不會被 git 追蹤
+
 ## 🏗️ 專案架構
 
 ```

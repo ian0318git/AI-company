@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+ARG VITE_API_HOST=127.0.0.1
+ENV VITE_API_HOST=$VITE_API_HOST
+
 WORKDIR /app
 
 COPY package.json package-lock.json ./

@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
+import shutil
 from contextlib import asynccontextmanager
+from datetime import datetime
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,11 +21,41 @@ from ai_embedded_company.api.routes.teams import router as teams_router
 from ai_embedded_company.storage import close_db, init_db
 
 
+_background_tasks: set[asyncio.Task] = set()
+
+
+def _auto_backup_db() -> None:
+    """Auto-backup the database on server startup to prevent accidental data loss."""
+    db_path = Path("data/ai_embedded_company.db")
+    if not db_path.exists() or db_path.stat().st_size == 0:
+        return
+
+    backup_dir = Path("data/db_backups")
+    backup_dir.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_path = backup_dir / f"ai_embedded_company_{timestamp}.db"
+
+    shutil.copy2(db_path, backup_path)
+    print(f"💾 Auto-backup: {backup_path.name} ({db_path.stat().st_size / 1024:.1f} KB)")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup/shutdown lifecycle for the FastAPI app."""
+    _auto_backup_db()
     await init_db()
+
+    # Start background slow-task monitor
+    from ai_embedded_company.api.routes.tasks import _check_slow_tasks_background
+    task = asyncio.create_task(_check_slow_tasks_background())
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+
     yield
+    # Cancel background tasks on shutdown
+    for t in _background_tasks:
+        t.cancel()
     await close_db()
 
 

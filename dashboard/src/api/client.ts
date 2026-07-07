@@ -23,13 +23,14 @@ async function request<T = any>(
 
 export const api = {
   // System
-  health: () => request<any>('GET', '/health'),
+  health: () => fetch('/health').then(r => { if (!r.ok) throw new Error(`Health check failed: HTTP ${r.status}`); return r.json() }),
 
   // Projects
   projects: {
     list: (status?: string) => request<any[]>('GET', `/projects/${status ? `?status=${status}` : ''}`),
     get: (id: string) => request<any>('GET', `/projects/${id}`),
     create: (data: any) => request<any>('POST', '/projects/', data),
+    getTime: (id: string) => request<any>('GET', `/projects/${id}/time`),
   },
 
   // Tasks
@@ -38,6 +39,8 @@ export const api = {
     create: (data: any) => request<any>('POST', '/tasks/', data),
     updateStatus: (id: string, status: string) => request<any>('PATCH', `/tasks/${id}/status?status=${status}`),
     wall: (projectId?: string) => request<any>('GET', `/tasks/${projectId ? `?project_id=${projectId}` : ''}`),
+    metrics: (projectId?: string) => request<any>('GET', `/tasks/metrics${projectId ? `?project_id=${projectId}` : ''}`),
+    getTime: (id: string) => request<any>('GET', `/tasks/${id}/time`),
   },
 
   // Teams

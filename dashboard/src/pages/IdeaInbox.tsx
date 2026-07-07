@@ -79,7 +79,7 @@ export default function IdeaInbox() {
     try {
       const data = await api.ideas.list()
       setIdeas(Array.isArray(data) ? data : (data as any).ideas || [])
-    } catch { /* ignore */ }
+    } catch (e) { console.warn('[IdeaInbox] fetchIdeas', e) }
     finally { setLoadingIdeas(false) }
   }
   useEffect(() => { fetchIdeas() }, [])
@@ -97,30 +97,30 @@ export default function IdeaInbox() {
 
   const handleRefine = async (id: string) => {
     setRefiningId(id)
-    try { const r = await api.ideas.refine(id); setIdeas(p => p.map(i => i.id === id ? r : i)) } catch {}
+    try { const r = await api.ideas.refine(id); setIdeas(p => p.map(i => i.id === id ? r : i)) } catch (e) { console.warn('[IdeaInbox] refine', e) }
     finally { setRefiningId(null) }
   }
 
   const handleStart = async (id: string) => {
     setStartingId(id)
-    try { const w = await api.ideas.start(id); setWorkflows(p => ({ ...p, [id]: w })); setIdeas(p => p.map(i => i.id === id ? w.idea : i)) } catch {}
+    try { const w = await api.ideas.start(id); setWorkflows(p => ({ ...p, [id]: w })); setIdeas(p => p.map(i => i.id === id ? w.idea : i)) } catch (e) { console.warn('[IdeaInbox] start', e) }
     finally { setStartingId(null) }
   }
 
   const handleTaskToggle = async (ideaId: string, taskId: string, s: string) => {
     const next = s === 'todo' ? 'in_progress' : s === 'in_progress' ? 'done' : 'todo'
-    try { await api.tasks.updateStatus(taskId, next); const wf = await api.ideas.workflow(ideaId); setWorkflows(p => ({ ...p, [ideaId]: wf })) } catch {}
+    try { await api.tasks.updateStatus(taskId, next); const wf = await api.ideas.workflow(ideaId); setWorkflows(p => ({ ...p, [ideaId]: wf })) } catch (e) { console.warn('[IdeaInbox] taskToggle', e) }
   }
 
   const handleAdvancePhase = async (ideaId: string, pipelineId: string) => {
-    try { await api.pipelines.advance(pipelineId); const wf = await api.ideas.workflow(ideaId); setWorkflows(p => ({ ...p, [ideaId]: wf })) } catch {}
+    try { await api.pipelines.advance(pipelineId); const wf = await api.ideas.workflow(ideaId); setWorkflows(p => ({ ...p, [ideaId]: wf })) } catch (e) { console.warn('[IdeaInbox] advancePhase', e) }
   }
 
   const handleToggleExpand = async (ideaId: string) => {
     if (expanded === ideaId) { setExpanded(null); return }
     setExpanded(ideaId)
-    if (!workflows[ideaId]) { try { const wf = await api.ideas.workflow(ideaId); setWorkflows(p => ({ ...p, [ideaId]: wf })) } catch {} }
-    if (!deliverables[ideaId]) { try { const d = await api.ideas.deliverables(ideaId); setDeliverables(p => ({ ...p, [ideaId]: d })) } catch {} }
+    if (!workflows[ideaId]) { try { const wf = await api.ideas.workflow(ideaId); setWorkflows(p => ({ ...p, [ideaId]: wf })) } catch (e) { console.warn('[IdeaInbox] loadWorkflow', e) } }
+    if (!deliverables[ideaId]) { try { const d = await api.ideas.deliverables(ideaId); setDeliverables(p => ({ ...p, [ideaId]: d })) } catch (e) { console.warn('[IdeaInbox] loadDeliverables', e) } }
   }
 
   const renderWorkflow = (wf: WorkflowState) => {
@@ -159,7 +159,7 @@ export default function IdeaInbox() {
             <button
               onClick={async e => {
                 e.stopPropagation()
-                try { const updated = await api.ideas.workflow(wf.idea.id); setWorkflows(p => ({ ...p, [wf.idea.id]: updated })) } catch {}
+                try { const updated = await api.ideas.workflow(wf.idea.id); setWorkflows(p => ({ ...p, [wf.idea.id]: updated })) } catch (e) { console.warn('[IdeaInbox] refresh', e) }
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded text-sm text-gray-400 transition-colors shrink-0"
               title="Refresh workflow state from server"
@@ -276,7 +276,7 @@ export default function IdeaInbox() {
                   key={gap.agent}
                   onClick={async (e) => {
                     e.stopPropagation()
-                    try { await api.ideas.addAgent(wf.idea.id, gap.agent); const u = await api.ideas.workflow(wf.idea.id); setWorkflows(p => ({ ...p, [wf.idea.id]: u })) } catch {}
+                    try { await api.ideas.addAgent(wf.idea.id, gap.agent); const u = await api.ideas.workflow(wf.idea.id); setWorkflows(p => ({ ...p, [wf.idea.id]: u })) } catch (e) { console.warn('[IdeaInbox] addAgent', e) }
                   }}
                   className="flex items-center gap-2 px-3 py-2 border border-yellow-500/20 bg-yellow-500/5 hover:bg-yellow-500/10 rounded-lg text-sm transition-colors group"
                   title={gap.rationale}

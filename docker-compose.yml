@@ -24,8 +24,12 @@ services:
     build:
       context: ./dashboard
       dockerfile: ../docker/Dockerfile.dashboard
+      args:
+        - VITE_API_HOST=api
     ports:
       - "5173:5173"
+    environment:
+      - VITE_API_HOST=api
     depends_on:
       - api
     restart: unless-stopped

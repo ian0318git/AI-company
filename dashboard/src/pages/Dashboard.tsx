@@ -1,9 +1,38 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api/client'
-import { Cpu, ListTodo, Lightbulb, GitBranch, CheckCircle } from 'lucide-react'
+import { Cpu, ListTodo, Lightbulb, GitBranch, Clock, AlertTriangle, CheckCircle, Users, FolderOpen } from 'lucide-react'
+import { useTaskMetrics } from '../hooks/useTaskTime'
+
+function formatMinutes(m: number): string {
+  if (m < 1) return '<1m'
+  if (m < 60) return `${Math.round(m)}m`
+  const h = Math.floor(m / 60)
+  const r = Math.round(m % 60)
+  return r > 0 ? `${h}h ${r}m` : `${h}h`
+}
+
+interface AgentTime {
+  agent: string
+  minutes: number
+}
+
+interface ProjectTime {
+  id: string
+  name: string
+  total_minutes: number
+  total_minutes_formatted: string
+  total_tasks: number
+  tracked_tasks: number
+  completed_tasks: number
+  agent_breakdown: AgentTime[]
+  status_counts: Record<string, number>
+}
 
 export default function Dashboard() {
   const [stats, setStats] = useState({ projects: 0, tasks: 0, ideas: 0, pipelines: 0 })
+  const [activeProjects, setActiveProjects] = useState<any[]>([])
+  const [projectTimes, setProjectTimes] = useState<Map<string, ProjectTime>>(new Map())
+  const { metrics } = useTaskMetrics(60_000)
 
   useEffect(() => {
     Promise.all([
@@ -17,7 +46,16 @@ export default function Dashboard() {
         ideas: 0,
         pipelines: Array.isArray(pipelines) ? pipelines.length : 0,
       })
-    }).catch(() => {})
+      if (Array.isArray(projects)) {
+        setActiveProjects(projects)
+        // Load time data for each active project
+        projects.forEach((p: any) => {
+          api.projects.getTime(p.id).then((pt: ProjectTime) => {
+            setProjectTimes(prev => new Map(prev).set(p.id, pt))
+          }).catch(() => {})
+        })
+      }
+    }).catch(e => console.warn('[Dashboard]', e))
   }, [])
 
   const cards = [
@@ -27,11 +65,38 @@ export default function Dashboard() {
     { label: 'Pipelines', value: stats.pipelines, icon: GitBranch, color: 'text-green-400' },
   ]
 
+  const timeCards = metrics ? [
+    { label: 'Today Tracked', value: formatMinutes(metrics.today_minutes), icon: Clock, color: 'text-cyan-400' },
+    { label: 'Avg Task Time', value: metrics.average_completion_minutes ? formatMinutes(metrics.average_completion_minutes) : '—', icon: Clock, color: 'text-indigo-400' },
+    { label: 'Active Tasks', value: metrics.active_count, icon: CheckCircle, color: 'text-blue-400' },
+    { label: 'Slow Tasks', value: metrics.slow_count, icon: AlertTriangle, color: metrics.slow_count > 0 ? 'text-red-400' : 'text-gray-400' },
+  ] : null
+
+  // Agent label mapping (short display names)
+  const agentLabels: Record<string, string> = {
+    'idea-refiner': 'Refiner',
+    'tech-lead': 'Tech Lead',
+    'technical-writer': 'Writer',
+    'qa-engineer': 'QA',
+    'project-manager': 'PM',
+    'embedded-firmware-engineer': 'Firmware',
+    'embedded-hardware-engineer': 'Hardware',
+    'embedded-testing-engineer': 'Test Eng',
+    'frontend-developer': 'Frontend',
+    'backend-developer': 'Backend',
+    'fullstack-developer': 'Fullstack',
+    'software-architect': 'Architect',
+    'devops-engineer': 'DevOps',
+    'rapid-prototyper': 'Prototyper',
+    'unassigned': '—',
+  }
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-6">Dashboard</h2>
 
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      {/* Main stats */}
+      <div className="grid grid-cols-4 gap-4 mb-6">
         {cards.map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="border border-[hsl(var(--border))] rounded-lg p-4 bg-white/5">
             <div className="flex items-center gap-2 mb-2">
@@ -43,6 +108,105 @@ export default function Dashboard() {
         ))}
       </div>
 
+      {/* Time tracking stats */}
+      {timeCards && (
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          {timeCards.map(({ label, value, icon: Icon, color }) => (
+            <div key={label} className="border border-[hsl(var(--border))] rounded-lg p-4 bg-white/5">
+              <div className="flex items-center gap-2 mb-2">
+                <Icon className={`w-5 h-5 ${color}`} />
+                <span className="text-sm text-gray-400">{label}</span>
+              </div>
+              <p className="text-3xl font-bold">{value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Slow tasks alert */}
+      {metrics && metrics.slow_count > 0 && (
+        <div className="border border-red-500/20 rounded-lg p-4 bg-red-500/5 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle className="w-5 h-5 text-red-400" />
+            <h3 className="text-lg font-semibold text-red-400">Slow Tasks ({metrics.slow_count})</h3>
+          </div>
+          <div className="space-y-2">
+            {metrics.slow_tasks.map(t => (
+              <div key={t.id} className="flex items-center justify-between text-sm">
+                <span className="text-gray-300">{t.title}</span>
+                <span className="text-red-400 font-mono">{formatMinutes(t.elapsed_minutes)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Agent Time Breakdown */}
+      {metrics && metrics.agent_breakdown && metrics.agent_breakdown.length > 0 && (
+        <div className="border border-[hsl(var(--border))] rounded-lg p-4 bg-white/5 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Users className="w-5 h-5 text-indigo-400" />
+            <h3 className="text-lg font-semibold text-gray-200">Agent Time</h3>
+          </div>
+          <div className="space-y-2">
+            {metrics.agent_breakdown.map((a: AgentTime) => (
+              <div key={a.agent} className="flex items-center justify-between text-sm">
+                <span className="text-gray-300">{agentLabels[a.agent] || a.agent}</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-32 h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-indigo-500 rounded-full"
+                         style={{ width: `${Math.min(100, (a.minutes / (metrics.agent_breakdown[0]?.minutes || 1)) * 100)}%` }} />
+                  </div>
+                  <span className="text-gray-400 font-mono w-16 text-right">{formatMinutes(a.minutes)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Active Projects */}
+      {activeProjects.length > 0 && (
+        <div className="border border-[hsl(var(--border))] rounded-lg p-4 bg-white/5 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <FolderOpen className="w-5 h-5 text-blue-400" />
+            <h3 className="text-lg font-semibold text-gray-200">Active Projects</h3>
+          </div>
+          <div className="space-y-3">
+            {activeProjects.map(p => {
+              const pt = projectTimes.get(p.id)
+              return (
+                <div key={p.id} className="border border-[hsl(var(--border))] rounded p-3 bg-black/20">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-sm text-gray-200">{p.name}</span>
+                    {pt && (
+                      <span className="text-sm text-gray-400 font-mono">{pt.total_minutes_formatted}</span>
+                    )}
+                  </div>
+                  {pt && (
+                    <div className="grid grid-cols-3 gap-2 text-xs text-gray-500">
+                      <span>📋 {pt.total_tasks} tasks</span>
+                      <span>⏱ {pt.tracked_tasks} tracked</span>
+                      <span>✅ {pt.completed_tasks} done</span>
+                    </div>
+                  )}
+                  {pt && pt.agent_breakdown.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {pt.agent_breakdown.map((a: AgentTime) => (
+                        <span key={a.agent} className="text-[10px] px-2 py-0.5 rounded bg-white/10 text-gray-400">
+                          {agentLabels[a.agent] || a.agent}: {formatMinutes(a.minutes)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Quick Actions */}
       <div className="border border-[hsl(var(--border))] rounded-lg p-6 bg-white/5">
         <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
         <div className="grid grid-cols-2 gap-3">

@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     # ── Logging ───────────────────────────────────────────
     log_level: str = "INFO"
 
+    # ── Task Time Tracking ────────────────────────────────
+    slow_task_threshold_minutes: int = 120
+    """Default threshold in minutes before a task is considered 'slow' and triggers self-evolution."""
+
     # ── Computed ──────────────────────────────────────────
     @property
     def resolved_data_dir(self) -> Path:

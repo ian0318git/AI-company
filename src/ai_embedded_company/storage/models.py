@@ -8,6 +8,9 @@ from datetime import datetime, timezone
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+# Type alias for Optional datetime to keep annotations clean
+_opt_dt = datetime | None
+
 from ai_embedded_company.storage.database import Base
 
 
@@ -58,6 +61,18 @@ class TaskModel(Base):
     assigned_agent: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
+
+    # ── Time Tracking ─────────────────────────────────────
+    started_at: Mapped[_opt_dt] = mapped_column(DateTime, nullable=True, default=None)
+    """When the task first transitioned to in_progress."""
+    completed_at: Mapped[_opt_dt] = mapped_column(DateTime, nullable=True, default=None)
+    """When the task transitioned to done."""
+    paused_seconds: Mapped[int] = mapped_column(Integer, default=0)
+    """Total seconds the task spent in a paused state (blocked/review) while timer was running."""
+    last_paused_at: Mapped[_opt_dt] = mapped_column(DateTime, nullable=True, default=None)
+    """When the current pause period started, if the timer is currently paused."""
+    estimated_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
+    """Optional estimated effort in minutes."""
 
     project: Mapped["ProjectModel"] = relationship(back_populates="tasks")
     subtasks: Mapped[list["TaskModel"]] = relationship(

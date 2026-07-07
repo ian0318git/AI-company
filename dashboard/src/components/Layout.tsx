@@ -1,9 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, ListTodo, Lightbulb, GitBranch, Cpu, BookOpen, Settings, Globe, TrendingUp } from 'lucide-react'
+import { LayoutDashboard, ListTodo, Lightbulb, GitBranch, Cpu, BookOpen, Settings, Globe, TrendingUp, Wifi, WifiOff } from 'lucide-react'
 import { useI18n } from '../i18n/context'
+import { useConnectionStatus } from '../hooks/useConnectionStatus'
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { tr, toggleLang, lang } = useI18n()
+  const connectionState = useConnectionStatus()
 
   const nav = [
     { to: '/', label: tr('nav.overview'), icon: LayoutDashboard },
@@ -73,6 +75,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <main className="flex-1 overflow-auto p-8">
+        {connectionState === 'connecting' && (
+          <div className="flex items-center gap-2 px-4 py-2 mb-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-sm">
+            <Wifi className="w-4 h-4 animate-pulse" />
+            Connecting to API server...
+          </div>
+        )}
+        {connectionState === 'disconnected' && (
+          <div className="flex items-center gap-2 px-4 py-2 mb-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            <WifiOff className="w-4 h-4" />
+            API server disconnected — check if the backend is running (port 8765)
+          </div>
+        )}
         {children}
       </main>
     </div>

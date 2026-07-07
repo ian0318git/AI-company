@@ -15,6 +15,7 @@ def register_tools(mcp):
         description: str = "",
         priority: str = "medium",
         assigned_agent: str = "",
+        estimated_minutes: int = 0,
     ) -> dict:
         """Create a new task on the task wall.
 
@@ -24,6 +25,7 @@ def register_tools(mcp):
             description: Detailed task description
             priority: Task priority: low, medium, high, critical
             assigned_agent: Agent role to assign (e.g., "embedded-firmware-engineer")
+            estimated_minutes: Estimated effort in minutes (0 = unknown)
         """
         payload = {
             "project_id": project_id,
@@ -33,6 +35,8 @@ def register_tools(mcp):
         }
         if assigned_agent:
             payload["assigned_agent"] = assigned_agent
+        if estimated_minutes > 0:
+            payload["estimated_minutes"] = estimated_minutes
 
         return await _api_call("POST", "/api/tasks/", json_data=payload)
 
@@ -140,6 +144,27 @@ def register_tools(mcp):
             "subtasks": created,
             "message": f"Decomposed into {len(created)} subtasks.",
         }
+
+    @mcp.tool()
+    async def task_metrics(project_id: str = "") -> dict:
+        """Get aggregate task time metrics for the dashboard.
+
+        Args:
+            project_id: Optional project UUID to filter by
+        """
+        params = {}
+        if project_id:
+            params["project_id"] = project_id
+        return await _api_call("GET", "/api/tasks/metrics", params=params)
+
+    @mcp.tool()
+    async def task_get_time(task_id: str) -> dict:
+        """Get detailed time-tracking info for a specific task.
+
+        Args:
+            task_id: The task UUID
+        """
+        return await _api_call("GET", f"/api/tasks/{task_id}/time")
 
     @mcp.tool()
     async def task_auto_assign(task_id: str) -> dict:

@@ -122,6 +122,7 @@ class TaskBase(BaseModel):
 class TaskCreate(TaskBase):
     project_id: str
     parent_task_id: Optional[str] = None
+    estimated_minutes: Optional[int] = None
 
 
 class Task(TaskBase):
@@ -129,6 +130,11 @@ class Task(TaskBase):
     project_id: str
     parent_task_id: Optional[str] = None
     status: TaskStatus = Field(default=TaskStatus.TODO)
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    paused_seconds: int = 0
+    last_paused_at: Optional[datetime] = None
+    estimated_minutes: Optional[int] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
