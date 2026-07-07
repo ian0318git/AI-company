@@ -79,6 +79,10 @@ The system will automatically:
 4. **Hardware Engineer** — Plan pin assignments
 5. Compile → Flash to your M5Stack
 
+**After the pipeline is created**, don't wait for tasks to run by themselves. Open the Dashboard → **Idea Inbox** → click **"Start Auto Schedule"** (top bar) → watch tasks execute in real time.
+
+> 💡 **Common mistake**: Users submit an idea, start a pipeline, and wonder why nothing happens. Tasks start in `todo` state — you must kick off the scheduler or click individual tasks to begin execution.
+
 ## 🖥️ Dashboard
 
 A visual command center for your AI engineering team — track every idea from conception to delivery.
@@ -109,6 +113,36 @@ Open **http://localhost:5173** — the dashboard proxies API calls to the backen
 | 🪙 **Token Usage** | Per-agent token consumption with progress bars. Track LLM costs at a glance — task-level, agent-level, and project-level totals. |
 | 🚨 **Slow Task Detection** | Tasks exceeding time thresholds (configurable, default 2h) auto-trigger the evolution system. Background monitor catches stuck in-progress tasks. |
 | 📊 **Project Time Analytics** | Each project shows total time, agent breakdown with mini-bars, and token usage per agent. Active projects panel on the Dashboard home. |
+| ▶️ **Auto Schedule** | One-click global scheduler in Idea Inbox. Green dot = running, red dot = stopped. No more waiting for tasks to execute — start it and walk away. |
+
+### ⚠️ Important: Execution Flow
+
+The Dashboard is a **command center**, not an auto-executor. After you start a pipeline, tasks are created in `todo` state — **they won't run by themselves.**
+
+```
+Your Idea → Refine → Start Pipeline → Tasks created (all todo)
+                                           │
+                              ┌────────────┴────────────┐
+                              ▼                         ▼
+                    ▶ Start Auto Schedule         Manual: click each
+                    (Idea Inbox top bar)          task ▶ Run / ⏹ Done
+                              │
+                              ▼
+                    Autonomous mode runs:
+                     • Picks next todo task
+                     • Sets it to in_progress
+                     • Does the work
+                     • Sets it to done
+                     • Repeats for all projects
+```
+
+**To start execution**, click **"Start Auto Schedule"** at the top of the Idea Inbox, or run in your terminal:
+
+```bash
+cd /home/ian/github-project/AI-company && ./scripts/autonomous.sh
+```
+
+The status bar turns **green** when running, **red** when stopped. No more wondering why tasks aren't progressing.
 
 ### Case Studies
 
@@ -189,6 +223,10 @@ Stop clicking "yes" — the system can run on its own.
 
 ### Quick Start
 
+From the Dashboard — open **Idea Inbox** → click **"Start Auto Schedule"** (top bar).
+
+Or from your terminal:
+
 ```bash
 # Start autonomous mode (runs every 5 minutes)
 ./scripts/autonomous.sh
@@ -203,6 +241,8 @@ Stop clicking "yes" — the system can run on its own.
 # Stop the autonomous loop
 ./scripts/autonomous.sh stop
 ```
+
+The Dashboard status bar shows green when running, red when stopped — no need to check the terminal.
 
 ### What happens when you walk away
 
