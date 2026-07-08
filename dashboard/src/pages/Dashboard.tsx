@@ -134,6 +134,63 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Agent Performance: Combined Time + Token */}
+      {metrics && metrics.agent_breakdown && metrics.agent_breakdown.length > 0 && (
+        <div className="border border-[hsl(var(--border))] rounded-lg p-4 bg-white/5 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Users className="w-5 h-5 text-indigo-400" />
+            <h3 className="text-lg font-semibold text-gray-200">Agent Performance</h3>
+            <span className="text-sm text-gray-500 ml-auto">
+              {metrics.total_tokens.toLocaleString()} 🪙 total
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-gray-500 uppercase border-b border-white/10">
+                  <th className="text-left py-2 pr-4">Agent</th>
+                  <th className="text-right py-2 px-4">Time</th>
+                  <th className="text-right py-2 px-4">Tokens</th>
+                  <th className="text-right py-2 pl-4 w-40">Time Distribution</th>
+                  <th className="text-right py-2 pl-4 w-40">Token Distribution</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  const maxTime = metrics.agent_breakdown[0]?.minutes || 1
+                  const maxTokens = metrics.token_breakdown[0]?.tokens || 1
+                  // Merge time + token data
+                  const merged = metrics.agent_breakdown.map(a => ({
+                    agent: a.agent,
+                    minutes: a.minutes,
+                    tokens: metrics.token_breakdown?.find(t => t.agent === a.agent)?.tokens || 0,
+                  }))
+                  return merged.map((a, i) => (
+                    <tr key={a.agent} className={`${i < merged.length - 1 ? 'border-b border-white/5' : ''}`}>
+                      <td className="py-2.5 pr-4 font-medium text-gray-200">{agentLabels[a.agent] || a.agent}</td>
+                      <td className="py-2.5 px-4 text-right text-gray-300 font-mono">{formatMinutes(a.minutes)}</td>
+                      <td className="py-2.5 px-4 text-right text-gray-300 font-mono">{a.tokens.toLocaleString()}</td>
+                      <td className="py-2.5 pl-4">
+                        <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                          <div className="h-full bg-indigo-500 rounded-full transition-all"
+                               style={{ width: `${(a.minutes / maxTime) * 100}%` }} />
+                        </div>
+                      </td>
+                      <td className="py-2.5 pl-4">
+                        <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                          <div className="h-full bg-yellow-500 rounded-full transition-all"
+                               style={{ width: `${(a.tokens / maxTokens) * 100}%` }} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                })()}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Evolution Health */}
       {dm && (
         <div className="border border-[hsl(var(--border))] rounded-lg p-4 bg-white/5 mb-6">
@@ -174,57 +231,6 @@ export default function Dashboard() {
               <div key={t.id} className="flex items-center justify-between text-sm">
                 <span className="text-gray-300">{t.title}</span>
                 <span className="text-red-400 font-mono">{formatMinutes(t.elapsed_minutes)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Token Usage */}
-      {metrics && metrics.token_breakdown && metrics.token_breakdown.length > 0 && (
-        <div className="border border-[hsl(var(--border))] rounded-lg p-4 bg-white/5 mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <Coins className="w-5 h-5 text-yellow-400" />
-            <h3 className="text-lg font-semibold text-gray-200">Token Usage</h3>
-            <span className="text-sm text-gray-500 ml-auto">
-              Total: {(metrics.total_tokens || 0).toLocaleString()}
-            </span>
-          </div>
-          <div className="space-y-2">
-            {metrics.token_breakdown.map((a: { agent: string; tokens: number }) => (
-              <div key={a.agent} className="flex items-center justify-between text-sm">
-                <span className="text-gray-300">{agentLabels[a.agent] || a.agent}</span>
-                <div className="flex items-center gap-3">
-                  <div className="w-32 h-2 bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-yellow-500 rounded-full"
-                         style={{ width: `${Math.min(100, (a.tokens / (metrics.token_breakdown[0]?.tokens || 1)) * 100)}%` }} />
-                  </div>
-                  <span className="text-gray-400 font-mono w-24 text-right">{a.tokens.toLocaleString()}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Agent Time Breakdown */}
-      {metrics && metrics.agent_breakdown && metrics.agent_breakdown.length > 0 && (
-        <div className="border border-[hsl(var(--border))] rounded-lg p-4 bg-white/5 mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <Users className="w-5 h-5 text-indigo-400" />
-            <h3 className="text-lg font-semibold text-gray-200">Agent Time</h3>
-          </div>
-          <div className="space-y-2">
-            {metrics.agent_breakdown.map((a: AgentTime) => (
-              <div key={a.agent} className="flex items-center justify-between text-sm">
-                <span className="text-gray-300">{agentLabels[a.agent] || a.agent}</span>
-                <div className="flex items-center gap-3">
-                  <div className="w-32 h-2 bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-indigo-500 rounded-full"
-                         style={{ width: `${Math.min(100, (a.minutes / (metrics.agent_breakdown[0]?.minutes || 1)) * 100)}%` }} />
-                  </div>
-                  <span className="text-gray-400 font-mono w-16 text-right">{formatMinutes(a.minutes)}</span>
-                </div>
               </div>
             ))}
           </div>
