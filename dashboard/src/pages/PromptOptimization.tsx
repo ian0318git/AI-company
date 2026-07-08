@@ -57,11 +57,21 @@ interface Insight {
   source_task_count: number
 }
 
+interface TaskWithTemplate {
+  id: string
+  title: string
+  status: string
+  prompt_template_id: string | null
+  assigned_agent: string | null
+  tokens_used: number
+}
+
 export default function PromptOptimization() {
   const [roi, setRoi] = useState<RoiData | null>(null)
   const [experiments, setExperiments] = useState<Experiment[]>([])
   const [insights, setInsights] = useState<Insight[]>([])
   const [templates, setTemplates] = useState<Template[]>([])
+  const [templateTasks, setTemplateTasks] = useState<TaskWithTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -78,16 +88,21 @@ export default function PromptOptimization() {
 
   async function fetchData() {
     try {
-      const [roiRes, expRes, insRes, tmplRes] = await Promise.all([
+      const [roiRes, expRes, insRes, tmplRes, tasksRes] = await Promise.all([
         api.prompts.roi().catch(() => null),
         api.prompts.experiments.list().catch(() => []),
         api.prompts.insights.list().catch(() => []),
         api.prompts.templates.list().catch(() => []),
+        api.tasks.list().catch(() => []),
       ])
       setRoi(roiRes)
       setExperiments(expRes || [])
       setInsights(insRes || [])
       setTemplates(tmplRes || [])
+      // Filter tasks that have a prompt_template_id
+      if (tasksRes) {
+        setTemplateTasks((tasksRes as TaskWithTemplate[]).filter(t => t.prompt_template_id))
+      }
     } catch (e) {
       setError('Failed to load prompt optimization data')
     } finally {
@@ -353,6 +368,47 @@ export default function PromptOptimization() {
           </div>
         )}
       </div>
+
+      {/* Template Tasks — tasks that used a prompt template */}
+      {templateTasks.length > 0 && (
+        <div className="rounded-xl bg-gray-800/30 border border-gray-700/50 p-5">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-green-400" />
+            Tasks Using Prompt Templates
+          </h2>
+          <p className="text-xs text-gray-500 mb-3">
+            {templateTasks.length} task{templateTasks.length !== 1 ? 's' : ''} have been executed with optimized prompt templates.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-gray-400 border-b border-gray-700/50">
+                  <th className="text-left py-2 pr-4">Task</th>
+                  <th className="text-left py-2 px-4">Agent</th>
+                  <th className="text-center py-2 px-4">Status</th>
+                  <th className="text-right py-2 px-4">Tokens</th>
+                </tr>
+              </thead>
+              <tbody>
+                {templateTasks.slice(0, 20).map(t => (
+                  <tr key={t.id} className="border-b border-gray-800/50 hover:bg-gray-800/20">
+                    <td className="py-2 pr-4 text-gray-200 max-w-xs truncate">{t.title}</td>
+                    <td className="py-2 px-4 text-gray-400">{t.assigned_agent || '—'}</td>
+                    <td className="py-2 px-4 text-center">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        t.status === 'done' ? 'bg-green-400/10 text-green-400' :
+                        t.status === 'in_progress' ? 'bg-blue-400/10 text-blue-400' :
+                        'bg-gray-600/10 text-gray-500'
+                      }`}>{t.status}</span>
+                    </td>
+                    <td className="py-2 px-4 text-right font-mono text-gray-400">{t.tokens_used}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* A/B Test Experiments */}
       <div className="rounded-xl bg-gray-800/30 border border-gray-700/50 p-5">

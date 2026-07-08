@@ -251,6 +251,36 @@ async def _log_prompt_result(session, model: TaskModel) -> None:
         pass
 
 
+# ── Agent Auto-Assignment ──────────────────────────────────────────────────
+
+
+_AGENT_KEYWORDS: list[tuple[list[str], str]] = [
+    # Order matters: first match wins
+    (["rest api", "endpoint", "backend", "api route", "database", "migration"], "backend-developer"),
+    (["frontend", "component", "ui", "react", "typescript", "page", "dashboard", "css"], "frontend-developer"),
+    (["fullstack", "full-stack", "quick prototype", "mvp", "prototype"], "fullstack-developer"),
+    (["ci/cd", "ci", "cd", "deploy", "devops", "docker", "infrastructure"], "devops-engineer"),
+    (["test", "e2e", "integration", "qa", "quality"], "qa-engineer"),
+    (["security", "vulnerability", "audit", "penetration"], "security-engineer"),
+    (["documentation", "doc", "readme", "wiki", "technical writer"], "technical-writer"),
+    (["architecture", "design", "tech-lead", "spike", "research"], "tech-lead"),
+    (["firmware", "embedded", "mcu", "esp32", "m5stack", "gpio", "i2c", "spi", "uart"], "embedded-firmware-engineer"),
+    (["prompt", "template", "optimization", "refinement", "refine"], "idea-refiner"),
+]
+
+
+def _auto_assign_agent(title: str) -> str | None:
+    """Auto-assign an agent role based on task title keywords.
+
+    Falls back to None if no keywords match.
+    """
+    lower = title.lower()
+    for keywords, agent_role in _AGENT_KEYWORDS:
+        if any(kw in lower for kw in keywords):
+            return agent_role
+    return None
+
+
 @router.post("/", response_model=Task, status_code=201)
 async def create_task(
     payload: TaskCreate,
@@ -262,7 +292,20 @@ async def create_task(
       1. Evolution vaccine injection — prepends failure-prevention warnings.
       2. Prompt optimization — prepends an optimized prompt template body
          from the prompt optimization system (closing the optimization loop).
+
+    If no agent is explicitly assigned, the system auto-assigns one
+    based on task title keywords.
     """
+    # Step 0: Auto-assign agent if not provided
+    if not payload.assigned_agent:
+        agent_str = _auto_assign_agent(payload.title)
+        if agent_str:
+            from ai_embedded_company.types import AgentRole
+            try:
+                payload.assigned_agent = AgentRole(agent_str)
+            except ValueError:
+                pass
+
     # Step 1: Inject evolution vaccine into description
     enriched_desc = payload.description or ""
     vaccine = await _inject_evolution_vaccine(session, payload)

@@ -87,6 +87,7 @@ export const api = {
       },
       create: (data: any) => request<any>('POST', '/prompts/templates', data),
       get: (id: string) => request<any>('GET', `/prompts/templates/${id}`),
+      update: (id: string, data: any) => request<any>('PATCH', `/prompts/templates/${id}`, data),
     },
     optimized: (agentRole: string, pipelineType?: string) => {
       const params = new URLSearchParams({ agent_role: agentRole })
