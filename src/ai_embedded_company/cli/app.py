@@ -83,6 +83,39 @@ def dashboard(
     )
 
 
+@app.command("classify-failures")
+def classify_failures(
+    record_id: str | None = typer.Option(None, "--record-id", "-r", help="Classify a single record by ID"),
+    all_records: bool = typer.Option(False, "--all", "-a", help="Re-classify ALL records (not just unclassified)"),
+):
+    """Run the failure classification engine — auto-classify and generate antibodies."""
+    import asyncio
+
+    from ai_embedded_company.storage.database import _get_sessionmaker
+    from ai_embedded_company.evolution.classifier import classify_and_heal, reclassify_all
+
+    async def _run():
+        session_factory = _get_sessionmaker()
+        async with session_factory() as session:
+            if all_records:
+                result = await reclassify_all(session)
+            else:
+                result = await classify_and_heal(session, record_id=record_id)
+        return result
+
+    typer.echo("Running failure classification engine...")
+    result = asyncio.run(_run())
+    typer.echo(f"Scanned: {result['scanned']}")
+    typer.echo(f"Classified: {result.get('classified', 0)}")
+    typer.echo(f"Category changes: {result.get('category_changes', result.get('updated', 0))}")
+    typer.echo(f"Antibodies generated: {result.get('antibodies_generated', result.get('antibodies_added', 0))}")
+    typer.echo(f"Vaccines generated: {result.get('vaccines_generated', result.get('vaccines_added', 0))}")
+    if result.get("by_category"):
+        typer.echo(f"By category: {result['by_category']}")
+    if result.get("errors"):
+        typer.echo(f"Errors: {result['errors']}", err=True)
+
+
 @app.command()
 def info():
     """Show system information."""
