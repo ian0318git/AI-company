@@ -8,6 +8,7 @@ import HardwarePanel from './pages/HardwarePanel'
 import KnowledgeBase from './pages/KnowledgeBase'
 import ProjectSettings from './pages/ProjectSettings'
 import EvolutionPanel from './pages/EvolutionPanel'
+import PromptOptimization from './pages/PromptOptimization'
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
         <Route path="/ideas" element={<IdeaInbox />} />
         <Route path="/pipelines" element={<PipelineView />} />
         <Route path="/evolution" element={<EvolutionPanel />} />
+        <Route path="/prompts" element={<PromptOptimization />} />
         <Route path="/hardware" element={<HardwarePanel />} />
         <Route path="/knowledge" element={<KnowledgeBase />} />
         <Route path="/settings" element={<ProjectSettings />} />

@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 # Type alias for Optional datetime to keep annotations clean
@@ -75,6 +75,12 @@ class TaskModel(Base):
     """Optional estimated effort in minutes."""
     tokens_used: Mapped[int] = mapped_column(Integer, default=0)
     """Total tokens consumed by agents working on this task."""
+
+    # ── Prompt Optimization Bridge ──────────────────────────
+    prompt_template_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("prompt_templates.id"), nullable=True, default=None
+    )
+    """The optimized prompt template selected at task creation (if any)."""
 
     project: Mapped["ProjectModel"] = relationship(back_populates="tasks")
     subtasks: Mapped[list["TaskModel"]] = relationship(
@@ -191,6 +197,103 @@ class FailureRecord(Base):
 
 
 # ── Self-Evolution: Research Findings ─────────────────────────────────────────
+
+
+class AntibodyCandidate(Base):
+    """Auto-generated antibody candidate awaiting human approval."""
+    __tablename__ = "antibody_candidates"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    failure_record_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("failure_records.id"), nullable=True)
+    title: Mapped[str] = mapped_column(String(256), nullable=False)
+    category: Mapped[str] = mapped_column(String(64), default="unknown")
+    severity: Mapped[str] = mapped_column(String(32), default="medium")
+    root_cause: Mapped[str] = mapped_column(Text, default="")
+    proposed_antibody: Mapped[str] = mapped_column(Text, default="")
+    proposed_vaccine: Mapped[str] = mapped_column(Text, default="")
+    proposed_catalyst: Mapped[str] = mapped_column(Text, default="")
+    confidence_score: Mapped[float] = mapped_column(Float, default=0.5)
+    status: Mapped[str] = mapped_column(String(32), default="pending")  # pending, approved, rejected
+    source: Mapped[str] = mapped_column(String(64), default="auto-classify")
+    signature: Mapped[str] = mapped_column(String(256), default="")
+    rejection_reason: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+# ── Prompt Optimization ──────────────────────────────────────────────────────────
+
+
+class PromptTemplateModel(Base):
+    """Persistent storage for prompt templates with versioning and performance tracking."""
+    __tablename__ = "prompt_templates"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    agent_role: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    pipeline_type: Mapped[str] = mapped_column(String(64), default="any")
+    template_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    template_body: Mapped[str] = mapped_column(Text, nullable=False)
+    token_count: Mapped[int] = mapped_column(Integer, default=0)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(String(32), default="active")  # active, archived, draft
+    tags: Mapped[str] = mapped_column(String(1024), default="[]")  # JSON list
+    source_experiment_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    avg_tokens: Mapped[float] = mapped_column(Float, default=0.0)
+    avg_seconds: Mapped[float] = mapped_column(Float, default=0.0)
+    use_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
+
+
+class PromptResultModel(Base):
+    """Execution result for a prompt template — links template → performance data."""
+    __tablename__ = "prompt_results"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    task_id: Mapped[str] = mapped_column(String(36), ForeignKey("tasks.id"), nullable=False, index=True)
+    template_id: Mapped[str] = mapped_column(String(36), ForeignKey("prompt_templates.id"), nullable=False, index=True)
+    a_b_test_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    arm: Mapped[str] = mapped_column(String(32), default="control")  # control, variant
+    tokens_used: Mapped[int] = mapped_column(Integer, default=0)
+    completion_seconds: Mapped[float] = mapped_column(Float, default=0.0)
+    task_status: Mapped[str] = mapped_column(String(32), default="done")
+    agent_role: Mapped[str] = mapped_column(String(64), default="unknown")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
+class ABExperimentModel(Base):
+    """A/B test experiment comparing two prompt templates."""
+    __tablename__ = "ab_experiments"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    experiment_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    control_template_id: Mapped[str] = mapped_column(String(36), ForeignKey("prompt_templates.id"), nullable=False)
+    variant_template_id: Mapped[str] = mapped_column(String(36), ForeignKey("prompt_templates.id"), nullable=False)
+    target_agent_role: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_task_types: Mapped[str] = mapped_column(String(1024), default="[]")
+    sample_size_target: Mapped[int] = mapped_column(Integer, default=20)
+    status: Mapped[str] = mapped_column(String(32), default="running")  # running, complete
+    winner: Mapped[str | None] = mapped_column(String(32), nullable=True)  # control, variant
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class OptimizationInsightModel(Base):
+    """Data-driven optimization insight generated from prompt performance data."""
+    __tablename__ = "optimization_insights"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    agent_role: Mapped[str] = mapped_column(String(64), nullable=False)
+    finding: Mapped[str] = mapped_column(Text, nullable=False)
+    effect_size: Mapped[float] = mapped_column(Float, default=0.0)
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    recommendation: Mapped[str] = mapped_column(Text, default="")
+    source_task_count: Mapped[int] = mapped_column(Integer, default=0)
+    template_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("prompt_templates.id"), nullable=True)
+    category: Mapped[str] = mapped_column(String(64), default="baseline")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
 
 class ResearchFinding(Base):

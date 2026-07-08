@@ -133,20 +133,158 @@ async def _check_slow_tasks_background(interval_seconds: int = 300) -> None:
 # ── CRUD Endpoints ─────────────────────────────────────────────────────────
 
 
+async def _inject_evolution_vaccine(
+    session: AsyncSession, payload: TaskCreate
+) -> str | None:
+    """Query the evolution system for a matching vaccine and prepend it.
+
+    Looks up FailureRecords whose category or agent_role matches the task's
+    assigned agent, and returns the best-matching vaccine text (or None).
+    """
+    from ai_embedded_company.storage.models import FailureRecord
+
+    agent_role = payload.assigned_agent.value if payload.assigned_agent else None
+    if not agent_role:
+        return None
+
+    # Find analyzed failure records with a non-empty vaccine for this agent role
+    stmt = (
+        select(FailureRecord)
+        .where(
+            FailureRecord.status == "analyzed",
+            FailureRecord.vaccine.isnot(None),
+            FailureRecord.vaccine != "",
+            FailureRecord.agent_role == agent_role,
+        )
+        .order_by(FailureRecord.frequency.desc())
+        .limit(3)
+    )
+    result = await session.execute(stmt)
+    records = result.scalars().all()
+
+    if not records:
+        return None
+
+    parts: list[str] = []
+    for r in records:
+        v = (r.vaccine or "").strip()
+        if v:
+            parts.append(f"🧬 [{r.category or 'general'}] {v}")
+
+    if not parts:
+        return None
+
+    return "\n".join(parts)
+
+
+async def _inject_prompt_optimization(
+    session: AsyncSession, payload: TaskCreate
+) -> tuple[str | None, str | None]:
+    """Query the prompt optimization system for an optimized template.
+
+    If a template is found, prepend its body to the task description and
+    return the enriched description and the template_id.
+
+    Returns (enriched_description or None, template_id or None).
+    """
+    agent_role = payload.assigned_agent.value if payload.assigned_agent else None
+    if not agent_role:
+        return None, None
+
+    try:
+        from ai_embedded_company.storage.models import PromptTemplateModel
+
+        # Find the best active template for this agent role
+        stmt = (
+            select(PromptTemplateModel)
+            .where(
+                PromptTemplateModel.agent_role == agent_role,
+                PromptTemplateModel.status == "active",
+            )
+            .order_by(PromptTemplateModel.updated_at.desc())
+            .limit(1)
+        )
+        result = await session.execute(stmt)
+        template = result.scalar_one_or_none()
+
+        if template is None:
+            return None, None
+
+        # Build enriched description by prepending template body
+        header = (
+            f"── Optimized Prompt Template ({template.template_name}) ──\n"
+            f"{template.template_body}"
+        )
+        return header, template.id
+    except Exception:
+        # Graceful degradation — if anything fails, skip optimization
+        return None, None
+
+
+async def _log_prompt_result(session, model: TaskModel) -> None:
+    """Log task completion result back to the prompt optimization system.
+
+    This closes the feedback loop: the template was selected at task creation,
+    and now we report how it performed (tokens used, completion time).
+    """
+    try:
+        from datetime import datetime
+        from ai_embedded_company.storage.models import PromptResultModel
+
+        elapsed_seconds: int | None = None
+        if model.started_at and model.completed_at:
+            paused = model.paused_seconds or 0
+            total = (model.completed_at - model.started_at).total_seconds()
+            elapsed_seconds = max(0, int(total - paused))
+
+        result = PromptResultModel(
+            template_id=model.prompt_template_id,
+            experiment_id=None,  # Not tied to an A/B experiment yet
+            tokens_used=model.tokens_used or 0,
+            completion_time_seconds=elapsed_seconds or 0,
+            agent_role=model.assigned_agent or "unknown",
+            task_id=model.id,
+        )
+        session.add(result)
+    except Exception:
+        # Non-critical — don't let result logging break task completion
+        pass
+
+
 @router.post("/", response_model=Task, status_code=201)
 async def create_task(
     payload: TaskCreate,
     session: AsyncSession = Depends(get_session),
 ) -> Task:
-    """Create a new task."""
+    """Create a new task.
+
+    Two enrichment steps are applied to the task description:
+      1. Evolution vaccine injection — prepends failure-prevention warnings.
+      2. Prompt optimization — prepends an optimized prompt template body
+         from the prompt optimization system (closing the optimization loop).
+    """
+    # Step 1: Inject evolution vaccine into description
+    enriched_desc = payload.description or ""
+    vaccine = await _inject_evolution_vaccine(session, payload)
+    if vaccine:
+        enriched_desc = f"{vaccine}\n\n{enriched_desc}" if enriched_desc else vaccine
+
+    # Step 2: Inject prompt optimization template (closes the optimization loop)
+    prompt_text, template_id = await _inject_prompt_optimization(session, payload)
+    prompt_template_id: str | None = None
+    if prompt_text:
+        enriched_desc = f"{prompt_text}\n\n{enriched_desc}" if enriched_desc else prompt_text
+        prompt_template_id = template_id
+
     task = TaskModel(
         project_id=payload.project_id,
         parent_task_id=payload.parent_task_id,
         title=payload.title,
-        description=payload.description,
+        description=enriched_desc,
         priority=payload.priority.value,
         assigned_agent=payload.assigned_agent.value if payload.assigned_agent else None,
         estimated_minutes=payload.estimated_minutes,
+        prompt_template_id=prompt_template_id,
     )
     session.add(task)
     await session.commit()
@@ -395,6 +533,10 @@ async def update_task_status(
         if elapsed is not None:
             await _trigger_evolution_if_slow(session, model, elapsed)
 
+        # ── Log prompt result if a template was used ──────────────────
+        if model.prompt_template_id:
+            await _log_prompt_result(session, model)
+
     # ── Auto-advance pipeline when all tasks in the project are done ──
     if status == "done":
         await _auto_advance_if_all_done(session, model.project_id)
@@ -550,6 +692,7 @@ def _model_to_task(m: TaskModel) -> Task:
         last_paused_at=m.last_paused_at,
         estimated_minutes=m.estimated_minutes,
         tokens_used=m.tokens_used or 0,
+        prompt_template_id=m.prompt_template_id,
         created_at=m.created_at,
         updated_at=m.updated_at,
     )

@@ -70,6 +70,58 @@ export const api = {
     removeAgent: (id: string, agent: string) => request<any>('POST', `/ideas/${id}/team/remove-agent?agent_role=${encodeURIComponent(agent)}`),
   },
 
+  // Dashboard
+  dashboard: {
+    metrics: () => request<any>('GET', '/dashboard/metrics'),
+  },
+
+  // Prompts
+  prompts: {
+    templates: {
+      list: (agentRole?: string, status?: string) => {
+        const params = new URLSearchParams()
+        if (agentRole) params.set('agent_role', agentRole)
+        if (status) params.set('status', status)
+        const qs = params.toString()
+        return request<any[]>('GET', `/prompts/templates${qs ? `?${qs}` : ''}`)
+      },
+      create: (data: any) => request<any>('POST', '/prompts/templates', data),
+      get: (id: string) => request<any>('GET', `/prompts/templates/${id}`),
+    },
+    optimized: (agentRole: string, pipelineType?: string) => {
+      const params = new URLSearchParams({ agent_role: agentRole })
+      if (pipelineType) params.set('pipeline_type', pipelineType)
+      return request<any>('GET', `/prompts/optimized?${params}`)
+    },
+    results: {
+      list: (templateId?: string, agentRole?: string) => {
+        const params = new URLSearchParams()
+        if (templateId) params.set('template_id', templateId)
+        if (agentRole) params.set('agent_role', agentRole)
+        const qs = params.toString()
+        return request<any[]>('GET', `/prompts/results${qs ? `?${qs}` : ''}`)
+      },
+      log: (data: any) => request<any>('POST', '/prompts/results', data),
+    },
+    experiments: {
+      list: (status?: string) => request<any[]>('GET', `/prompts/experiments${status ? `?status=${status}` : ''}`),
+      create: (data: any) => request<any>('POST', '/prompts/experiments', data),
+      get: (id: string) => request<any>('GET', `/prompts/experiments/${id}`),
+      conclude: (id: string) => request<any>('POST', `/prompts/experiments/${id}/conclude`),
+    },
+    insights: {
+      list: (agentRole?: string, minConfidence?: number) => {
+        const params = new URLSearchParams()
+        if (agentRole) params.set('agent_role', agentRole)
+        if (minConfidence) params.set('min_confidence', String(minConfidence))
+        const qs = params.toString()
+        return request<any[]>('GET', `/prompts/insights${qs ? `?${qs}` : ''}`)
+      },
+      generate: () => request<any>('POST', '/prompts/insights/generate'),
+    },
+    roi: () => request<any>('GET', '/prompts/roi'),
+  },
+
   // Pipelines
   pipelines: {
     list: (projectId?: string) => request<any[]>('GET', `/pipelines/${projectId ? `?project_id=${projectId}` : ''}`),

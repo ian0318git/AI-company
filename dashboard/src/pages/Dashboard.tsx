@@ -30,27 +30,28 @@ interface ProjectTime {
   status_counts: Record<string, number>
 }
 
+interface DashboardMetrics {
+  pipelines: { total: number; by_phase: Record<string, number>; by_type: Record<string, number> }
+  ideas: { total: number; by_status: Record<string, number>; daily_created: Record<string, number> }
+  tasks: { total: number; tracked: number; by_status: Record<string, number>; today_minutes: number; completed_count: number; average_completion_minutes: number | null; total_tokens: number }
+  projects: { total: number; active: number }
+  evolution: { total_failures: number; by_category: Record<string, number>; by_severity: Record<string, number>; antibodies: number; vaccines: number }
+  cycle_throughput: { ideas_per_day: Record<string, number>; pipelines_per_day: Record<string, number> }
+}
+
 export default function Dashboard() {
-  const [stats, setStats] = useState({ projects: 0, tasks: 0, ideas: 0, pipelines: 0 })
+  const [dm, setDm] = useState<DashboardMetrics | null>(null)
   const [activeProjects, setActiveProjects] = useState<any[]>([])
   const [projectTimes, setProjectTimes] = useState<Map<string, ProjectTime>>(new Map())
   const { metrics } = useTaskMetrics(60_000)
 
   useEffect(() => {
-    Promise.all([
-      api.projects.list('active'),
-      api.tasks.list(),
-      api.pipelines.list(),
-    ]).then(([projects, tasks, pipelines]) => {
-      setStats({
-        projects: Array.isArray(projects) ? projects.length : 0,
-        tasks: Array.isArray(tasks) ? tasks.length : 0,
-        ideas: 0,
-        pipelines: Array.isArray(pipelines) ? pipelines.length : 0,
-      })
+    // Load consolidated dashboard metrics
+    api.dashboard.metrics().then(setDm).catch(() => {})
+    // Also load active projects individually (for project-level time breakdown)
+    api.projects.list('active').then(projects => {
       if (Array.isArray(projects)) {
         setActiveProjects(projects)
-        // Load time data for each active project
         projects.forEach((p: any) => {
           api.projects.getTime(p.id).then((pt: ProjectTime) => {
             setProjectTimes(prev => new Map(prev).set(p.id, pt))
@@ -60,11 +61,16 @@ export default function Dashboard() {
     }).catch(e => console.warn('[Dashboard]', e))
   }, [])
 
+  const projects = dm?.projects ?? { total: 0, active: 0 }
+  const tasks = dm?.tasks ?? { total: 0, tracked: 0, by_status: {}, today_minutes: 0, completed_count: 0, average_completion_minutes: null, total_tokens: 0 }
+  const ideas = dm?.ideas ?? { total: 0, by_status: {}, daily_created: {} }
+  const pipelines = dm?.pipelines ?? { total: 0, by_phase: {}, by_type: {} }
+
   const cards = [
-    { label: 'Active Projects', value: stats.projects, icon: Cpu, color: 'text-blue-400' },
-    { label: 'Open Tasks', value: stats.tasks, icon: ListTodo, color: 'text-yellow-400' },
-    { label: 'Ideas Captured', value: stats.ideas, icon: Lightbulb, color: 'text-purple-400' },
-    { label: 'Pipelines', value: stats.pipelines, icon: GitBranch, color: 'text-green-400' },
+    { label: 'Projects', value: projects.total, icon: Cpu, color: 'text-blue-400', sub: `${projects.active} active` },
+    { label: 'Tasks', value: tasks.total, icon: ListTodo, color: 'text-yellow-400', sub: `${tasks.completed_count} done` },
+    { label: 'Ideas', value: ideas.total, icon: Lightbulb, color: 'text-purple-400', sub: `${Object.values(ideas.by_status).reduce((a, b) => a + b, 0) - (ideas.by_status?.done ?? 0)} pending` },
+    { label: 'Pipelines', value: pipelines.total, icon: GitBranch, color: 'text-green-400', sub: `${(pipelines.by_phase?.done ?? 0)} completed` },
   ]
 
   const timeCards = metrics ? [
@@ -99,15 +105,18 @@ export default function Dashboard() {
 
       {/* Main stats */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        {cards.map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="border border-[hsl(var(--border))] rounded-lg p-4 bg-white/5">
+        {cards.map((card) => {
+          const Icon = card.icon
+          return (
+          <div key={card.label} className="border border-[hsl(var(--border))] rounded-lg p-4 bg-white/5">
             <div className="flex items-center gap-2 mb-2">
-              <Icon className={`w-5 h-5 ${color}`} />
-              <span className="text-sm text-gray-400">{label}</span>
+              <Icon className={`w-5 h-5 ${card.color}`} />
+              <span className="text-sm text-gray-400">{card.label}</span>
             </div>
-            <p className="text-3xl font-bold">{value}</p>
-          </div>
-        ))}
+            <p className="text-3xl font-bold">{card.value}</p>
+            {'sub' in card ? <p className="text-xs text-gray-500 mt-1">{card.sub}</p> : null}
+          </div>)
+        })}
       </div>
 
       {/* Time tracking stats */}
@@ -122,6 +131,34 @@ export default function Dashboard() {
               <p className="text-3xl font-bold">{value}</p>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Evolution Health */}
+      {dm && (
+        <div className="border border-[hsl(var(--border))] rounded-lg p-4 bg-white/5 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <GitBranch className="w-5 h-5 text-emerald-400" />
+            <h3 className="text-lg font-semibold text-gray-200">Evolution System Health</h3>
+          </div>
+          <div className="grid grid-cols-4 gap-4">
+            <div>
+              <p className="text-xs text-gray-500">Failures</p>
+              <p className="text-xl font-bold text-red-400">{dm.evolution.total_failures}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Antibodies</p>
+              <p className="text-xl font-bold text-blue-400">{dm.evolution.antibodies}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Vaccines</p>
+              <p className="text-xl font-bold text-green-400">{dm.evolution.vaccines}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Ideas/Day</p>
+              <p className="text-xl font-bold text-purple-400">{Object.keys(dm.cycle_throughput?.ideas_per_day ?? {}).length} days</p>
+            </div>
+          </div>
         </div>
       )}
 

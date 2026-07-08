@@ -11,9 +11,11 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from ai_embedded_company.api.routes.dashboard import router as dashboard_router
 from ai_embedded_company.api.routes.evolution import router as evolution_router
 from ai_embedded_company.api.routes.ideas import router as ideas_router
 from ai_embedded_company.api.routes.pipelines import router as pipelines_router
+from ai_embedded_company.api.routes.prompts import router as prompts_router
 from ai_embedded_company.api.routes.projects import router as projects_router
 from ai_embedded_company.api.routes.system import router as system_router
 from ai_embedded_company.api.routes.tasks import router as tasks_router
@@ -85,6 +87,8 @@ def create_app() -> FastAPI:
     app.include_router(teams_router, prefix="/api/teams", tags=["Teams"])
     app.include_router(pipelines_router, prefix="/api/pipelines", tags=["Pipelines"])
     app.include_router(evolution_router, prefix="/api/evolution", tags=["Evolution"])
+    app.include_router(prompts_router, prefix="/api/prompts", tags=["Prompts"])
+    app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"])
 
     return app
 

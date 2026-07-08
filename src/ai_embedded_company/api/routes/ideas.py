@@ -6,6 +6,7 @@ import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -515,6 +516,8 @@ async def create_idea(
         project_id=project.id,
         title=payload.title,
         raw_description=payload.raw_description,
+        refined_description=payload.refined_description,
+        suggested_pipeline=payload.suggested_pipeline,
         tags=json.dumps(payload.tags),
         status="new",
     )
@@ -558,12 +561,21 @@ async def get_idea(
     return _model_to_idea(model)
 
 
+class RefinePayload(BaseModel):
+    """Optional payload for the refine endpoint."""
+    refined_description: str | None = None
+
+
 @router.post("/{idea_id}/refine", response_model=Idea)
 async def refine_idea(
     idea_id: str,
+    payload: RefinePayload | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> Idea:
-    """Refine a raw idea — analyze and suggest pipeline + next steps."""
+    """Refine a raw idea — analyze and suggest pipeline + next steps.
+
+    Optionally accepts a refined_description in the request body.
+    """
     result = await session.execute(
         select(IdeaModel).where(IdeaModel.id == idea_id)
     )
@@ -611,6 +623,8 @@ async def refine_idea(
         suggested_pipeline = "quick-prototype"
 
     idea.suggested_pipeline = suggested_pipeline
+    if payload and payload.refined_description:
+        idea.refined_description = payload.refined_description
     idea.status = "refining"
     await session.commit()
     await session.refresh(idea)

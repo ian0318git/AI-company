@@ -136,6 +136,7 @@ class Task(TaskBase):
     last_paused_at: Optional[datetime] = None
     estimated_minutes: Optional[int] = None
     tokens_used: int = 0
+    prompt_template_id: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -152,7 +153,8 @@ class IdeaBase(BaseModel):
 
 
 class IdeaCreate(IdeaBase):
-    pass
+    refined_description: Optional[str] = None
+    suggested_pipeline: Optional[PipelineType] = None
 
 
 class Idea(IdeaBase):
