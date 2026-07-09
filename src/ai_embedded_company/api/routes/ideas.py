@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ai_embedded_company.api.pagination import paginate_query
 from ai_embedded_company.storage import get_session
 from ai_embedded_company.storage.models import (
     IdeaModel,
@@ -18,7 +19,7 @@ from ai_embedded_company.storage.models import (
     TaskModel,
     TeamModel,
 )
-from ai_embedded_company.types import AgentRole, Idea, IdeaCreate
+from ai_embedded_company.types import AgentRole, Idea, IdeaCreate, PaginatedResponse
 
 router = APIRouter()
 
@@ -528,22 +529,25 @@ async def create_idea(
     return _model_to_idea(idea)
 
 
-@router.get("/", response_model=list[Idea])
+@router.get("/", response_model=PaginatedResponse)
 async def list_ideas(
     project_id: str | None = None,
     status: str | None = None,
+    limit: int = 200,
+    offset: int = 0,
     session: AsyncSession = Depends(get_session),
-) -> list[Idea]:
-    """List all ideas, optionally filtered by project or status."""
+) -> PaginatedResponse:
+    """List all ideas, optionally filtered by project or status. Paginated."""
     stmt = select(IdeaModel)
     if project_id:
         stmt = stmt.where(IdeaModel.project_id == project_id)
     if status:
         stmt = stmt.where(IdeaModel.status == status)
     stmt = stmt.order_by(IdeaModel.created_at.desc())
-    result = await session.execute(stmt)
-    models = result.scalars().all()
-    return [_model_to_idea(m) for m in models]
+    return await paginate_query(
+        session, stmt, IdeaModel, limit=limit, offset=offset,
+        converter=_model_to_idea,
+    )
 
 
 @router.get("/{idea_id}", response_model=Idea)

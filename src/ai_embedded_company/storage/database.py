@@ -2,12 +2,61 @@
 
 from __future__ import annotations
 
-from typing import AsyncIterator
+import logging
+import time
+from typing import Any, AsyncIterator
 
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
 from ai_embedded_company.config import get_settings
+
+logger = logging.getLogger(__name__)
+
+# ── Query profiling (Phase 2 of API Performance Profiling) ──────────────────
+# Tracks per-statement execution time and logs queries exceeding the threshold.
+
+SLOW_QUERY_THRESHOLD_MS = 100  # Log queries slower than this
+
+_query_timings: dict[int, float] = {}  # connection_id -> start_time
+
+
+def _before_cursor_execute(
+    conn: Any,
+    cursor: Any,
+    statement: str,
+    parameters: Any,
+    context: Any | None,
+    executemany: bool,
+) -> None:
+    """Record the start time before each statement executes."""
+    _query_timings[id(conn)] = time.perf_counter()
+
+
+def _after_cursor_execute(
+    conn: Any,
+    cursor: Any,
+    statement: str,
+    parameters: Any,
+    context: Any | None,
+    executemany: bool,
+) -> None:
+    """Log query duration if it exceeds the slow threshold."""
+    start = _query_timings.pop(id(conn), None)
+    if start is None:
+        return
+    elapsed_ms = (time.perf_counter() - start) * 1000
+    if elapsed_ms >= SLOW_QUERY_THRESHOLD_MS:
+        # Truncate long statements for readability
+        stmt_short = statement.strip()[:120]
+        logger.warning(
+            "🐢 Slow query (%.0f ms): %s",
+            elapsed_ms, stmt_short,
+        )
+
+
+# ── Engine & Sessions ───────────────────────────────────────────────────────
 
 
 class Base(DeclarativeBase):
@@ -16,10 +65,12 @@ class Base(DeclarativeBase):
 
 _engine = None
 _sessionmaker = None
+_wal_applied = False
+_profiling_attached = False
 
 
 def _get_engine():
-    global _engine
+    global _engine, _wal_applied, _profiling_attached
     if _engine is None:
         settings = get_settings()
         db_url = settings.database_url
@@ -34,6 +85,28 @@ def _get_engine():
             echo=False,
             connect_args={"check_same_thread": False} if "sqlite" in db_url else {},
         )
+
+        # Enable SQLite WAL (Write-Ahead Logging) for concurrent read performance
+        if "sqlite" in db_url and not _wal_applied:
+            @event.listens_for(_engine.sync_engine, "connect")
+            def _set_sqlite_pragma(dbapi_connection, connection_record):
+                cursor = dbapi_connection.cursor()
+                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute("PRAGMA synchronous=NORMAL")
+                cursor.close()
+            _wal_applied = True
+            logger.info("🔧 SQLite WAL mode enabled for concurrent read performance")
+
+        # Attach query profiling listeners (run once per engine lifetime)
+        if not _profiling_attached:
+            event.listen(_engine.sync_engine, "before_cursor_execute", _before_cursor_execute)
+            event.listen(_engine.sync_engine, "after_cursor_execute", _after_cursor_execute)
+            _profiling_attached = True
+            logger.info(
+                "📊 Query profiling attached — slow query threshold: %d ms",
+                SLOW_QUERY_THRESHOLD_MS,
+            )
+
     return _engine
 
 

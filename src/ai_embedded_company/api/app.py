@@ -8,6 +8,8 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 
+import time
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -78,6 +80,17 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Timing middleware — capture per-endpoint latency
+    @app.middleware("http")
+    async def _timing_middleware(request, call_next):
+        start = time.perf_counter()
+        response = await call_next(request)
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        response.headers["X-Response-Time-Ms"] = f"{elapsed_ms:.1f}"
+        if elapsed_ms > 500:
+            print(f"⚠️  SLOW: {request.method} {request.url.path} took {elapsed_ms:.1f}ms")
+        return response
 
     # Register routes
     app.include_router(system_router, tags=["System"])

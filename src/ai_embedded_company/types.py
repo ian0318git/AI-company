@@ -6,7 +6,7 @@ These types are used across the API, MCP tools, orchestrator, and storage layers
 from __future__ import annotations
 
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -77,6 +77,28 @@ class AgentRole(str, enum.Enum):
     RAPID_PROTOTYPER = "rapid-prototyper"
 
 
+# ── Pagination ────────────────────────────────────────────────────────────
+
+
+class PaginatedRequest(BaseModel):
+    """Query parameters for paginated list endpoints."""
+    limit: int = Field(default=50, ge=1, le=500, description="Max items per page")
+    offset: int = Field(default=0, ge=0, description="Number of items to skip")
+
+
+class PaginatedResponse(BaseModel):
+    """Wrapper for paginated list responses."""
+    items: list[Any]
+    total: int = Field(..., description="Total number of items matching the filter")
+    limit: int = Field(..., description="Items per page (as requested)")
+    offset: int = Field(..., description="Offset from start (as requested)")
+    next_offset: int | None = Field(None, description="Offset for the next page, or null if no more")
+    prev_offset: int | None = Field(None, description="Offset for the previous page, or null if none")
+
+
+# ── Enums (unchanged) ──────────────────────────────────────────────────────
+
+
 class BoardFamily(str, enum.Enum):
     ESP32 = "esp32"
     ESP32_S3 = "esp32-s3"
@@ -100,11 +122,19 @@ class ProjectCreate(ProjectBase):
     pass
 
 
+class ProjectUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=128)
+    description: str | None = Field(default=None, max_length=1024)
+    board_family: BoardFamily | None = None
+    board_model: str | None = Field(default=None, max_length=64)
+    status: ProjectStatus | None = None
+
+
 class Project(ProjectBase):
     id: str = Field(..., description="UUID string")
     status: ProjectStatus = Field(default=ProjectStatus.ACTIVE)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     model_config = {"from_attributes": True}
 
@@ -137,8 +167,8 @@ class Task(TaskBase):
     estimated_minutes: Optional[int] = None
     tokens_used: int = 0
     prompt_template_id: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     model_config = {"from_attributes": True}
 
@@ -162,8 +192,8 @@ class Idea(IdeaBase):
     refined_description: Optional[str] = None
     suggested_pipeline: Optional[PipelineType] = None
     status: str = "new"  # new, refining, approved, rejected, in_progress, done
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     model_config = {"from_attributes": True}
 
@@ -189,8 +219,8 @@ class Pipeline(PipelineCreate):
     id: str = Field(..., description="UUID string")
     steps: list[PipelineStep] = Field(default_factory=list)
     current_phase: PipelinePhase = Field(default=PipelinePhase.IDEA)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     model_config = {"from_attributes": True}
 
@@ -206,15 +236,21 @@ class AgentInfo(BaseModel):
     expertise: list[str] = Field(default_factory=list)
 
 
+class TeamMemberInfo(BaseModel):
+    """A team member as stored in the DB (role + status)."""
+    role: AgentRole
+    status: str = "idle"
+
+
 class TeamCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=128)
     project_id: str
-    members: list[AgentRole] = Field(default_factory=list)
+    members: list[TeamMemberInfo] = Field(default_factory=list)
 
 
 class Team(TeamCreate):
     id: str = Field(..., description="UUID string")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 # ── Pydantic Models — Knowledge ──────────────────────────────────────────────
@@ -227,7 +263,7 @@ class KnowledgeEntry(BaseModel):
     category: str  # pinout, datasheet, code-pattern, bug-fix, tip
     tags: list[str] = Field(default_factory=list)
     board_family: Optional[BoardFamily] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 # ── Pydantic Models — Hardware ───────────────────────────────────────────────

@@ -1,0 +1,22 @@
+{
+  "scan_time": "2026-07-09T21:59:46.967181+00:00",
+  "pipelines_scanned": 10,
+  "failure_records_seeded": 3,
+  "patterns_found": [
+    {
+      "type": "repeated_maintenance",
+      "failure_id": "c37002fc-27e6-4f03-9d2c-5eff62a45645",
+      "detail": "8 quick-prototype pipelines created"
+    },
+    {
+      "type": "research_not_fed",
+      "failure_id": "3ccb4ba6-fb92-4a52-bc1b-3d81e8240412",
+      "detail": "2 research pipelines without evolution feed"
+    },
+    {
+      "type": "empty_optimization_insights",
+      "failure_id": "67855ccc-1db6-40b8-9e78-02437a87cbee",
+      "detail": "0 optimization insights for 27 pipelines"
+    }
+  ]
+}

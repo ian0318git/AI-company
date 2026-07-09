@@ -3,16 +3,17 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ai_embedded_company.api.pagination import paginate_query
 from ai_embedded_company.config import get_settings
 from ai_embedded_company.storage import get_session
 from ai_embedded_company.storage.models import FailureRecord, TaskModel
-from ai_embedded_company.types import Task, TaskCreate, TaskPriority, TaskStatus
+from ai_embedded_company.types import PaginatedResponse, Task, TaskCreate, TaskPriority, TaskStatus
 
 router = APIRouter()
 
@@ -20,8 +21,8 @@ router = APIRouter()
 
 
 def _utcnow() -> datetime:
-    """Return naive UTC datetime (matching SQLite storage convention)."""
-    return datetime.utcnow()
+    """Return timezone-aware UTC datetime."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _compute_elapsed_minutes(model: TaskModel, now: datetime | None = None) -> float | None:
@@ -335,22 +336,25 @@ async def create_task(
     return _model_to_task(task)
 
 
-@router.get("/", response_model=list[Task])
+@router.get("/", response_model=PaginatedResponse)
 async def list_tasks(
     project_id: str | None = None,
     status: str | None = None,
+    limit: int = 200,
+    offset: int = 0,
     session: AsyncSession = Depends(get_session),
-) -> list[Task]:
-    """List tasks, optionally filtered by project and/or status."""
+) -> PaginatedResponse:
+    """List tasks, optionally filtered by project and/or status. Paginated."""
     stmt = select(TaskModel)
     if project_id:
         stmt = stmt.where(TaskModel.project_id == project_id)
     if status:
         stmt = stmt.where(TaskModel.status == status)
     stmt = stmt.order_by(TaskModel.priority.desc(), TaskModel.created_at.asc())
-    result = await session.execute(stmt)
-    models = result.scalars().all()
-    return [_model_to_task(m) for m in models]
+    return await paginate_query(
+        session, stmt, TaskModel, limit=limit, offset=offset,
+        converter=_model_to_task,
+    )
 
 
 # ── Time Tracking Endpoints (MUST be before /{task_id} catch-all) ──────────

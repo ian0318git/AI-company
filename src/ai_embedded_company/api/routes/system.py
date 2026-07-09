@@ -6,7 +6,7 @@ import json
 import os
 import platform
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
@@ -35,7 +35,7 @@ async def autonomous_status() -> dict:
             pid = data.get("pid")
             started_at = data.get("started_at")
             if started_at:
-                uptime_seconds = int((datetime.utcnow() - datetime.fromisoformat(started_at)).total_seconds())
+                uptime_seconds = int((datetime.now(timezone.utc) - datetime.fromisoformat(started_at)).total_seconds())
             # Verify the process is actually alive
             if pid:
                 alive = os.path.exists(f"/proc/{pid}") if os.name != "nt" else True
@@ -92,7 +92,7 @@ async def autonomous_start() -> dict:
         # Write lock file
         AUTONOMOUS_LOCK.write_text(json.dumps({
             "pid": process.pid,
-            "started_at": datetime.utcnow().isoformat(),
+            "started_at": datetime.now(timezone.utc).isoformat(),
         }))
         return {
             "status": "started",

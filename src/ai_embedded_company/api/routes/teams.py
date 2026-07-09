@@ -8,9 +8,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ai_embedded_company.api.pagination import paginate_query
 from ai_embedded_company.storage import get_session
 from ai_embedded_company.storage.models import TeamModel
-from ai_embedded_company.types import Team, TeamCreate
+from ai_embedded_company.types import PaginatedResponse, Team, TeamCreate
 
 router = APIRouter()
 
@@ -24,7 +25,7 @@ async def create_team(
     team = TeamModel(
         name=payload.name,
         project_id=payload.project_id,
-        members=json.dumps([m.value if hasattr(m, 'value') else m for m in payload.members]),
+        members=json.dumps([m.model_dump() for m in payload.members]),
     )
     session.add(team)
     await session.commit()
@@ -32,17 +33,21 @@ async def create_team(
     return _model_to_team(team)
 
 
-@router.get("/", response_model=list[Team])
+@router.get("/", response_model=PaginatedResponse)
 async def list_teams(
     project_id: str | None = None,
+    limit: int = 200,
+    offset: int = 0,
     session: AsyncSession = Depends(get_session),
-) -> list[Team]:
-    """List teams, optionally filtered by project."""
+) -> PaginatedResponse:
+    """List teams, optionally filtered by project. Paginated."""
     stmt = select(TeamModel)
     if project_id:
         stmt = stmt.where(TeamModel.project_id == project_id)
-    result = await session.execute(stmt)
-    return [_model_to_team(m) for m in result.scalars().all()]
+    return await paginate_query(
+        session, stmt, TeamModel, limit=limit, offset=offset,
+        converter=_model_to_team,
+    )
 
 
 @router.get("/{team_id}", response_model=Team)

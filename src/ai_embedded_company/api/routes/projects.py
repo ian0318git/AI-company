@@ -2,21 +2,22 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ai_embedded_company.api.pagination import paginate_query
 from ai_embedded_company.storage import get_session
 from ai_embedded_company.storage.models import ProjectModel, TaskModel
-from ai_embedded_company.types import Project, ProjectCreate, ProjectStatus
+from ai_embedded_company.types import PaginatedResponse, Project, ProjectCreate, ProjectUpdate, ProjectStatus
 
 router = APIRouter()
 
 
 def _utcnow() -> datetime:
-    return datetime.utcnow()
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _compute_elapsed_minutes(task: TaskModel, now: datetime) -> float | None:
@@ -49,19 +50,22 @@ async def create_project(
     return _model_to_project(project)
 
 
-@router.get("/", response_model=list[Project])
+@router.get("/", response_model=PaginatedResponse)
 async def list_projects(
     status: str | None = None,
+    limit: int = 200,
+    offset: int = 0,
     session: AsyncSession = Depends(get_session),
-) -> list[Project]:
-    """List all projects, optionally filtered by status."""
+) -> PaginatedResponse:
+    """List all projects, optionally filtered by status. Paginated."""
     stmt = select(ProjectModel)
     if status:
         stmt = stmt.where(ProjectModel.status == status)
     stmt = stmt.order_by(ProjectModel.created_at.desc())
-    result = await session.execute(stmt)
-    models = result.scalars().all()
-    return [_model_to_project(m) for m in models]
+    return await paginate_query(
+        session, stmt, ProjectModel, limit=limit, offset=offset,
+        converter=_model_to_project,
+    )
 
 
 @router.get("/{project_id}", response_model=Project)
@@ -162,7 +166,7 @@ async def get_project_time(
 @router.patch("/{project_id}", response_model=Project)
 async def update_project(
     project_id: str,
-    payload: ProjectCreate,
+    payload: ProjectUpdate,
     session: AsyncSession = Depends(get_session),
 ) -> Project:
     """Update a project."""
@@ -173,11 +177,17 @@ async def update_project(
     if model is None:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    model.name = payload.name
-    model.description = payload.description
-    if payload.board_family:
+    if payload.name is not None:
+        model.name = payload.name
+    if payload.description is not None:
+        model.description = payload.description
+    if payload.board_family is not None:
         model.board_family = payload.board_family.value
-    model.board_model = payload.board_model or ""
+    if payload.board_model is not None:
+        model.board_model = payload.board_model
+    if payload.status is not None:
+        model.status = payload.status.value
+    model.updated_at = datetime.now(timezone.utc)
 
     await session.commit()
     await session.refresh(model)

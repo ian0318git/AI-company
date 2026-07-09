@@ -1,0 +1,32 @@
+{
+  "check_time": "2026-07-09T21:57:44.775882+00:00",
+  "db_path": "data/ai_embedded_company.db",
+  "file_size_bytes": 499712,
+  "file_size_mb": 0.48,
+  "integrity_check": "ok",
+  "page_count": 122,
+  "page_size": 4096,
+  "freelist_pages": 18,
+  "wasted_kb": 72.0,
+  "total_db_kb": 488.0,
+  "tables": {
+    "ab_experiments": 4,
+    "alembic_version": 0,
+    "antibody_candidates": 8,
+    "event_logs": 57,
+    "failure_records": 5,
+    "ideas": 25,
+    "knowledge": 25,
+    "optimization_insights": 0,
+    "pipelines": 27,
+    "projects": 26,
+    "prompt_results": 0,
+    "prompt_templates": 11,
+    "research_findings": 5,
+    "tasks": 134,
+    "teams": 30
+  },
+  "index_count": 4,
+  "auto_vacuum": "none",
+  "schema_checksum": -6761760945884270381
+}
