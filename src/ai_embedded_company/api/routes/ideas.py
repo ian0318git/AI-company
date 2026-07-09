@@ -1010,6 +1010,25 @@ async def remove_agent_from_team(
     return {"status": "removed", "agent": agent_role, "team_size": len(members)}
 
 
+@router.patch("/{idea_id}/archive")
+async def archive_idea(
+    idea_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Archive an idea — hides it from the dashboard but keeps data in DB."""
+    result = await session.execute(
+        select(IdeaModel).where(IdeaModel.id == idea_id)
+    )
+    idea = result.scalar_one_or_none()
+    if idea is None:
+        raise HTTPException(status_code=404, detail="Idea not found")
+
+    idea.status = "archived"
+    await session.commit()
+
+    return {"status": "archived", "title": idea.title, "id": idea_id}
+
+
 # ── file helpers ───────────────────────────────────────────────────────────────
 
 

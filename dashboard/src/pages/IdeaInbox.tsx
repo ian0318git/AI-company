@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   Lightbulb, Send, Loader2, AlertCircle, ChevronDown, ChevronUp,
   Sparkles, Play, CheckCircle2, Circle, Clock, Users, ListTodo,
-  RefreshCw, TrendingUp, FileText, Download,
+  RefreshCw, TrendingUp, FileText, Download, EyeOff,
 } from 'lucide-react'
 import { api } from '../api/client'
 import { useI18n } from '../i18n/context'
@@ -33,6 +33,7 @@ const statusColors: Record<string, string> = {
   new: 'bg-blue-500/20 text-blue-400', refining: 'bg-yellow-500/20 text-yellow-400',
   approved: 'bg-green-500/20 text-green-400', rejected: 'bg-red-500/20 text-red-400',
   in_progress: 'bg-purple-500/20 text-purple-400', done: 'bg-emerald-500/20 text-emerald-400',
+  archived: 'bg-gray-700/30 text-gray-500',
 }
 
 const agentColors: Record<string, string> = {
@@ -110,6 +111,16 @@ export default function IdeaInbox() {
   const handleTaskToggle = async (ideaId: string, taskId: string, s: string) => {
     const next = s === 'todo' ? 'in_progress' : s === 'in_progress' ? 'done' : 'todo'
     try { await api.tasks.updateStatus(taskId, next); const wf = await api.ideas.workflow(ideaId); setWorkflows(p => ({ ...p, [ideaId]: wf })) } catch (e) { console.warn('[IdeaInbox] taskToggle', e) }
+  }
+
+  const [showArchived, setShowArchived] = useState(false)
+
+  const handleArchiveIdea = async (ideaId: string, title: string) => {
+    if (!window.confirm(`Hide "${title}"?\n\nIt will be hidden from the dashboard but kept in database. You can show it again later.`)) return
+    try {
+      await api.ideas.archive(ideaId)
+      setIdeas(p => p.map(i => i.id === ideaId ? { ...i, status: 'archived' } : i))
+    } catch (e) { console.warn('[IdeaInbox] archive', e) }
   }
 
   const handleExecuteTask = async (ideaId: string, taskId: string, status: string) => {
@@ -555,13 +566,22 @@ export default function IdeaInbox() {
       {/* Recent Ideas */}
       <div className="border border-[hsl(var(--border))] rounded-lg p-6 bg-white/5">
         <h3 className="text-xl font-semibold mb-3">{tr('idea.recent')}</h3>
+        {/* Archive Toggle */}
+        <div className="flex items-center gap-2 mb-3">
+          <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
+            <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)}
+                   className="rounded border-gray-600 bg-black/30" />
+            Show archived
+          </label>
+        </div>
+
         {loadingIdeas ? (
           <div className="flex items-center gap-2 text-base text-gray-400"><Loader2 className="w-5 h-5 animate-spin" />{tr('idea.loading')}</div>
         ) : ideas.length === 0 ? (
           <p className="text-base text-gray-500">{tr('idea.empty')}</p>
         ) : (
           <ul className="space-y-3">
-            {ideas.map(idea => {
+            {ideas.filter(i => showArchived || i.status !== 'archived').map(idea => {
               const wf = workflows[idea.id]
               const showWorkflow = expanded === idea.id && wf && wf.pipeline
               return (
@@ -573,6 +593,13 @@ export default function IdeaInbox() {
                       <span className={`text-sm px-2 py-0.5 rounded-full shrink-0 ${statusColors[idea.status] || 'bg-gray-500/20 text-gray-400'}`}>
                         {tr(`status.${idea.status}`) || idea.status}
                       </span>
+                      {idea.status !== 'archived' && (
+                        <button onClick={e => { e.stopPropagation(); handleArchiveIdea(idea.id, idea.title) }}
+                                className="text-gray-500 hover:text-red-400 transition-colors shrink-0 ml-1"
+                                title="Hide from dashboard">
+                          <EyeOff className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                     {idea.raw_description && <p className="text-sm text-gray-400 line-clamp-4 mb-2">{idea.raw_description}</p>}
                     <div className="flex items-center gap-2 flex-wrap">
