@@ -42,21 +42,35 @@ interface DashboardMetrics {
 export default function Dashboard() {
   const [dm, setDm] = useState<DashboardMetrics | null>(null)
   const [activeProjects, setActiveProjects] = useState<any[]>([])
+  const [completedProjects, setCompletedProjects] = useState<any[]>([])
   const [projectTimes, setProjectTimes] = useState<Map<string, ProjectTime>>(new Map())
   const { metrics } = useTaskMetrics(60_000)
+
+  const loadProjectTimes = (projects: any[]) => {
+    if (!Array.isArray(projects)) return
+    projects.forEach((p: any) => {
+      api.projects.getTime(p.id).then((pt: ProjectTime) => {
+        setProjectTimes(prev => new Map(prev).set(p.id, pt))
+      }).catch(() => {})
+    })
+  }
 
   useEffect(() => {
     // Load consolidated dashboard metrics
     api.dashboard.metrics().then(setDm).catch(() => {})
-    // Also load active projects individually (for project-level time breakdown)
+    // Load active + recent completed projects (for time/token breakdown)
     api.projects.list('active').then(projects => {
       if (Array.isArray(projects)) {
         setActiveProjects(projects)
-        projects.forEach((p: any) => {
-          api.projects.getTime(p.id).then((pt: ProjectTime) => {
-            setProjectTimes(prev => new Map(prev).set(p.id, pt))
-          }).catch(() => {})
-        })
+        loadProjectTimes(projects)
+      }
+    }).catch(e => console.warn('[Dashboard]', e))
+    // Load last 5 completed projects with time data
+    api.projects.list('completed').then(projects => {
+      if (Array.isArray(projects)) {
+        const recent = projects.slice(0, 5)
+        setCompletedProjects(recent)
+        loadProjectTimes(recent)
       }
     }).catch(e => console.warn('[Dashboard]', e))
   }, [])
@@ -271,6 +285,41 @@ export default function Dashboard() {
                           <span key={a.agent} className="text-[10px] px-2 py-0.5 rounded bg-white/10 text-gray-400">
                             {agentLabels[a.agent] || a.agent}: {formatMinutes(a.minutes)}
                             {tokens ? ` / ${tokens.tokens.toLocaleString()}🪙` : ''}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Recent Completed Projects */}
+      {completedProjects.length > 0 && (
+        <div className="border border-[hsl(var(--border))] rounded-lg p-4 bg-white/5 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <CheckCircle className="w-5 h-5 text-emerald-400" />
+            <h3 className="text-lg font-semibold text-gray-200">Recent Completed Projects</h3>
+          </div>
+          <div className="space-y-3">
+            {completedProjects.slice(0, 5).map(p => {
+              const pt = projectTimes.get(p.id)
+              return (
+                <div key={p.id} className="border border-[hsl(var(--border))] rounded p-3 bg-black/20">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-sm text-gray-200">{p.name}</span>
+                    {pt && <span className="text-sm text-gray-400 font-mono">{pt.total_minutes_formatted} / 🪙{pt.total_tokens.toLocaleString()}</span>}
+                  </div>
+                  {pt && pt.agent_breakdown.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {pt.agent_breakdown.map((a: AgentTime) => {
+                        const tok = pt.token_breakdown?.find(t => t.agent === a.agent)
+                        return (
+                          <span key={a.agent} className="text-[10px] px-2 py-0.5 rounded bg-white/10 text-gray-400">
+                            {agentLabels[a.agent] || a.agent}: {formatMinutes(a.minutes)}{tok && tok.tokens > 0 ? ` / 🪙${tok.tokens.toLocaleString()}` : ''}
                           </span>
                         )
                       })}
