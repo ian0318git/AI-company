@@ -469,6 +469,45 @@ async def task_metrics(
     }
 
 
+@router.get("/token-history")
+async def token_history(
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Return daily token usage for the past 7 days."""
+    from ai_embedded_company.storage.models import EventLogModel
+    from sqlalchemy import func as sa_func
+    import datetime
+
+    now = _utcnow()
+    seven_days_ago = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    seven_days_ago = seven_days_ago - datetime.timedelta(days=8)
+
+    result = await session.execute(
+        select(
+            sa_func.date(EventLogModel.created_at).label("day"),
+            sa_func.sum(
+                sa_func.json_extract(EventLogModel.payload, "$.tokens").cast(Integer)
+            ).label("tokens"),
+        )
+        .where(
+            EventLogModel.event_type == "token_usage",
+            EventLogModel.created_at >= seven_days_ago,
+        )
+        .group_by(sa_func.date(EventLogModel.created_at))
+        .order_by(sa_func.date(EventLogModel.created_at))
+    )
+
+    daily: list[dict] = []
+    total = 0
+    for row in result.all():
+        day_str = str(row.day) if row.day else "?"
+        tok = int(row.tokens) if row.tokens else 0
+        daily.append({"date": day_str, "tokens": tok})
+        total += tok
+
+    return {"daily": daily, "total": total, "days": len(daily)}
+
+
 @router.get("/{task_id}/time")
 async def get_task_time(
     task_id: str,

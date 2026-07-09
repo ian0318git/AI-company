@@ -41,6 +41,7 @@ export const api = {
     wall: (projectId?: string) => request<any>('GET', `/tasks/${projectId ? `?project_id=${projectId}` : ''}`),
     metrics: (projectId?: string) => request<any>('GET', `/tasks/metrics${projectId ? `?project_id=${projectId}` : ''}`),
     getTime: (id: string) => request<any>('GET', `/tasks/${id}/time`),
+    tokenHistory: () => request<any>('GET', '/tasks/token-history'),
     logTokens: (id: string, tokens: number, agent: string) => request<any>('POST', `/tasks/${id}/tokens`, { tokens, agent }),
   },
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api/client'
-import { Cpu, ListTodo, Lightbulb, GitBranch, Clock, AlertTriangle, CheckCircle, Users, FolderOpen, Coins } from 'lucide-react'
+import { Cpu, ListTodo, Lightbulb, GitBranch, Clock, AlertTriangle, CheckCircle, Users, FolderOpen, Coins, TrendingUp } from 'lucide-react'
 import { useTaskMetrics } from '../hooks/useTaskTime'
 
 function formatMinutes(m: number): string {
@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [activeProjects, setActiveProjects] = useState<any[]>([])
   const [completedProjects, setCompletedProjects] = useState<any[]>([])
   const [projectTimes, setProjectTimes] = useState<Map<string, ProjectTime>>(new Map())
+  const [tokenHistory, setTokenHistory] = useState<{ date: string; tokens: number }[]>([])
   const { metrics } = useTaskMetrics(60_000)
 
   const loadProjectTimes = (projects: any[]) => {
@@ -73,6 +74,10 @@ export default function Dashboard() {
         loadProjectTimes(recent)
       }
     }).catch(e => console.warn('[Dashboard]', e))
+    // Load daily token history
+    api.tasks.tokenHistory().then(d => {
+      if (d?.daily) setTokenHistory(d.daily)
+    }).catch(() => {})
   }, [])
 
   const projects = dm?.projects ?? { total: 0, active: 0 }
@@ -201,6 +206,33 @@ export default function Dashboard() {
                 })()}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Daily Token Usage Chart */}
+      {tokenHistory.length > 0 && (
+        <div className="border border-[hsl(var(--border))] rounded-lg p-4 bg-white/5 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="w-5 h-5 text-yellow-400" />
+            <h3 className="text-lg font-semibold text-gray-200">Daily Token Usage</h3>
+            <span className="text-sm text-gray-500 ml-auto">
+              {tokenHistory.reduce((s, d) => s + d.tokens, 0).toLocaleString()} total
+            </span>
+          </div>
+          <div className="flex items-end gap-2 h-24">
+            {(() => {
+              const max = Math.max(...tokenHistory.map(d => d.tokens), 1)
+              return tokenHistory.map(d => (
+                <div key={d.date} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                  <span className="text-[10px] text-gray-400 font-mono">{(d.tokens / 1000).toFixed(1)}k</span>
+                  <div className="w-full bg-yellow-500/80 rounded-t"
+                       style={{ height: `${(d.tokens / max) * 100}%`, minHeight: d.tokens > 0 ? '8px' : '0' }}
+                       title={`${d.date}: ${d.tokens.toLocaleString()} tokens`} />
+                  <span className="text-[10px] text-gray-500">{d.date.slice(5)}</span>
+                </div>
+              ))
+            })()}
           </div>
         </div>
       )}

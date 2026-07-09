@@ -113,7 +113,11 @@ Open **http://localhost:5173** — the dashboard proxies API calls to the backen
 | 🪙 **Token Usage** | Per-agent token consumption with progress bars. Track LLM costs at a glance — task-level, agent-level, and project-level totals. |
 | 🚨 **Slow Task Detection** | Tasks exceeding time thresholds (configurable, default 2h) auto-trigger the evolution system. Background monitor catches stuck in-progress tasks. |
 | 📊 **Project Time Analytics** | Each project shows total time, agent breakdown with mini-bars, and token usage per agent. Active projects panel on the Dashboard home. |
-| ▶️ **Auto Schedule** | One-click global scheduler in Idea Inbox. Green dot = running, red dot = stopped. No more waiting for tasks to execute — start it and walk away. |
+| ▶️ **Auto Schedule** | One-click global scheduler in Idea Inbox. Green dot = running, red dot = stopped. Start/Stop directly from the UI — no terminal needed. |
+| 👤 **Agent Performance Table** | Combined time + token view for all agents. Sortable columns with distribution bars. See who's working hardest at a glance. |
+| 📈 **Daily Token Chart** | 7-day token usage bar chart on the Dashboard home. Track daily LLM costs and spot usage trends. |
+| 🙈 **Archive Ideas** | Hide unwanted ideas from the inbox without deleting data. Toggle "Show archived" to restore. Soft-delete keeps your database intact. |
+| 📋 **Per-Project Agent Breakdown** | Each project card shows agent-level time and token breakdown. Recently completed projects also visible on the Dashboard home. |
 
 ### ⚠️ Important: Execution Flow
 
@@ -136,13 +140,9 @@ Your Idea → Refine → Start Pipeline → Tasks created (all todo)
                      • Repeats for all projects
 ```
 
-**To start execution**, click **"Start Auto Schedule"** at the top of the Idea Inbox, or run in your terminal:
+**To start execution**, click **"Start Auto Schedule"** at the top of the Idea Inbox. It starts directly from the UI — no terminal needed.
 
-```bash
-cd /home/ian/github-project/AI-company && ./scripts/autonomous.sh
-```
-
-The status bar turns **green** when running, **red** when stopped. No more wondering why tasks aren't progressing.
+The status bar turns **green** when running, **red** when stopped. Click **Stop** to pause. No more wondering why tasks aren't progressing.
 
 ### Case Studies
 
