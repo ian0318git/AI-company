@@ -475,37 +475,38 @@ async def token_history(
 ) -> dict:
     """Return daily token usage for the past 7 days."""
     from ai_embedded_company.storage.models import EventLogModel
-    from sqlalchemy import func as sa_func
     import datetime
 
     now = _utcnow()
-    seven_days_ago = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    seven_days_ago = seven_days_ago - datetime.timedelta(days=8)
+    eight_days_ago = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    eight_days_ago = eight_days_ago - datetime.timedelta(days=8)
 
     result = await session.execute(
-        select(
-            sa_func.date(EventLogModel.created_at).label("day"),
-            sa_func.sum(
-                sa_func.json_extract(EventLogModel.payload, "$.tokens").cast(Integer)
-            ).label("tokens"),
-        )
+        select(EventLogModel.created_at, EventLogModel.payload)
         .where(
             EventLogModel.event_type == "token_usage",
-            EventLogModel.created_at >= seven_days_ago,
+            EventLogModel.created_at >= eight_days_ago,
         )
-        .group_by(sa_func.date(EventLogModel.created_at))
-        .order_by(sa_func.date(EventLogModel.created_at))
+        .order_by(EventLogModel.created_at)
     )
 
-    daily: list[dict] = []
-    total = 0
-    for row in result.all():
-        day_str = str(row.day) if row.day else "?"
-        tok = int(row.tokens) if row.tokens else 0
-        daily.append({"date": day_str, "tokens": tok})
-        total += tok
+    # Aggregate tokens by day in Python
+    daily_map: dict[str, int] = {}
+    total_tokens = 0
 
-    return {"daily": daily, "total": total, "days": len(daily)}
+    for row in result.all():
+        day_key = row.created_at.strftime("%Y-%m-%d") if row.created_at else "?"
+        try:
+            payload = json.loads(row.payload) if isinstance(row.payload, str) else row.payload
+            tokens = int(payload.get("tokens", 0))
+        except (json.JSONDecodeError, TypeError, ValueError):
+            tokens = 0
+        daily_map[day_key] = daily_map.get(day_key, 0) + tokens
+        total_tokens += tokens
+
+    daily = [{"date": date, "tokens": tokens} for date, tokens in sorted(daily_map.items())]
+
+    return {"daily": daily, "total": total_tokens, "days": len(daily)}
 
 
 @router.get("/{task_id}/time")
