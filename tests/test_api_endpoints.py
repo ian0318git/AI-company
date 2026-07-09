@@ -493,3 +493,298 @@ async def test_get_team_by_id(test_session: AsyncSession) -> None:
     assert resp.json()["name"] == "Detail Team"
 
     app.dependency_overrides.clear()
+
+
+# ── System endpoints ──────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_health_check(test_session: AsyncSession) -> None:
+    """GET /api/system/health returns healthy status."""
+    async def _override() -> AsyncSession:
+        yield test_session
+
+    app.dependency_overrides[get_session] = _override
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/health")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "healthy"
+    assert "version" in body
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_system_status_endpoint(test_session: AsyncSession) -> None:
+    """GET /status returns api/database state."""
+    async def _override() -> AsyncSession:
+        yield test_session
+
+    app.dependency_overrides[get_session] = _override
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/status")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["api"] == "running"
+    assert body["database"] in ("connected", "disconnected")
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_log_event(test_session: AsyncSession) -> None:
+    """POST /event creates an event log entry."""
+    async def _override() -> AsyncSession:
+        yield test_session
+
+    app.dependency_overrides[get_session] = _override
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/event",
+            json={"event_type": "cycle_start", "source": "test", "payload": '{"cycle": 238}'},
+        )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["status"] == "logged"
+    assert body["id"] is not None
+
+    app.dependency_overrides.clear()
+
+
+# ── Pipeline endpoints ────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_create_and_list_pipeline(test_session: AsyncSession) -> None:
+    """POST /api/pipelines/ creates a pipeline; listing returns it."""
+    project = ProjectModel(name="Pipeline Project")
+    test_session.add(project)
+    await test_session.commit()
+    await test_session.refresh(project)
+
+    async def _override() -> AsyncSession:
+        yield test_session
+
+    app.dependency_overrides[get_session] = _override
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        create_resp = await client.post(
+            "/api/pipelines/",
+            json={
+                "project_id": project.id,
+                "pipeline_type": "quick-prototype",
+                "idea_id": None,
+            },
+        )
+    assert create_resp.status_code == 201
+    body = create_resp.json()
+    assert body["pipeline_type"] == "quick-prototype"
+    assert body["current_phase"] == "idea"
+
+    # List returns the new pipeline
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        list_resp = await client.get("/api/pipelines/")
+    assert list_resp.status_code == 200
+    all_pipelines = list_resp.json()
+    assert any(p["id"] == body["id"] for p in all_pipelines)
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_get_pipeline_by_id(test_session: AsyncSession) -> None:
+    """GET /api/pipelines/{id} returns pipeline details; 404 otherwise."""
+    project = ProjectModel(name="Pipeline Get Project")
+    test_session.add(project)
+    await test_session.commit()
+    await test_session.refresh(project)
+
+    from ai_embedded_company.storage.models import PipelineModel
+    pipeline = PipelineModel(
+        project_id=project.id,
+        pipeline_type="web-fullstack",
+        idea_id=None,
+        steps="[]",
+        current_phase="design",
+    )
+    test_session.add(pipeline)
+    await test_session.commit()
+    await test_session.refresh(pipeline)
+
+    async def _override() -> AsyncSession:
+        yield test_session
+
+    app.dependency_overrides[get_session] = _override
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get(f"/api/pipelines/{pipeline.id}")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["current_phase"] == "design"
+    assert body["pipeline_type"] == "web-fullstack"
+
+    # 404 for nonexistent
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/api/pipelines/nonexistent-pipeline-id")
+    assert resp.status_code == 404
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_advance_pipeline(test_session: AsyncSession) -> None:
+    """POST /api/pipelines/{id}/advance progresses through phases."""
+    project = ProjectModel(name="Advance Pipeline Project")
+    test_session.add(project)
+    await test_session.commit()
+    await test_session.refresh(project)
+
+    from ai_embedded_company.storage.models import PipelineModel
+    pipeline = PipelineModel(
+        project_id=project.id,
+        pipeline_type="quick-prototype",
+        idea_id=None,
+        steps="[]",
+        current_phase="idea",
+    )
+    test_session.add(pipeline)
+    await test_session.commit()
+    await test_session.refresh(pipeline)
+
+    async def _override() -> AsyncSession:
+        yield test_session
+
+    app.dependency_overrides[get_session] = _override
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(f"/api/pipelines/{pipeline.id}/advance")
+    assert resp.status_code == 200
+    assert resp.json()["current_phase"] == "requirements"
+    assert resp.json()["previous_phase"] == "idea"
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_advance_pipeline_to_end(test_session: AsyncSession) -> None:
+    """Pipeline done-phase auto-completes linked idea and project."""
+    from ai_embedded_company.storage.models import PipelineModel, IdeaModel
+
+    idea = IdeaModel(title="Advance Complete Idea", raw_description="Pipeline test", status="in_progress")
+    test_session.add(idea)
+    await test_session.commit()
+    await test_session.refresh(idea)
+
+    project = ProjectModel(name="Advance Complete Project", status="active")
+    test_session.add(project)
+    await test_session.commit()
+    await test_session.refresh(project)
+
+    # Seed pipeline at "deploy" phase so one advance lands on "done"
+    pipeline = PipelineModel(
+        project_id=project.id,
+        pipeline_type="quick-prototype",
+        idea_id=idea.id,
+        steps="[]",
+        current_phase="deploy",
+    )
+    test_session.add(pipeline)
+    await test_session.commit()
+    await test_session.refresh(pipeline)
+
+    async def _override() -> AsyncSession:
+        yield test_session
+
+    app.dependency_overrides[get_session] = _override
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(f"/api/pipelines/{pipeline.id}/advance")
+    assert resp.status_code == 200
+    assert resp.json()["current_phase"] == "done"
+    assert resp.json()["is_complete"] is True
+
+    app.dependency_overrides.clear()
+
+
+# ── Dashboard metrics ─────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_dashboard_metrics(test_session: AsyncSession) -> None:
+    """GET /api/dashboard/metrics returns aggregated health data."""
+    project = ProjectModel(name="Dashboard Project")
+    test_session.add(project)
+    await test_session.commit()
+    await test_session.refresh(project)
+
+    async def _override() -> AsyncSession:
+        yield test_session
+
+    app.dependency_overrides[get_session] = _override
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/api/dashboard/metrics")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "pipelines" in body
+    assert "ideas" in body
+    assert "projects" in body
+    assert "tasks" in body
+    assert "evolution" in body
+
+    app.dependency_overrides.clear()
+
+
+# ── Evolution endpoints ───────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_evolution_status_empty(test_session: AsyncSession) -> None:
+    """GET /api/evolution/status returns nascent health when no data."""
+    async def _override() -> AsyncSession:
+        yield test_session
+
+    app.dependency_overrides[get_session] = _override
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/api/evolution/status")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["evolution_health"] == "nascent"
+    assert body["failures"]["total"] == 0
+    assert body["research"]["total_findings"] == 0
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_evolution_classify(test_session: AsyncSession) -> None:
+    """POST /api/evolution/classify runs classify_and_heal."""
+    async def _override() -> AsyncSession:
+        yield test_session
+
+    app.dependency_overrides[get_session] = _override
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post("/api/evolution/classify")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "scanned" in body
+    assert "classified" in body
+    assert body["by_category"] is not None
+
+    app.dependency_overrides.clear()

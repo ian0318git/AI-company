@@ -22,6 +22,7 @@ from ai_embedded_company.api.routes.projects import router as projects_router
 from ai_embedded_company.api.routes.system import router as system_router
 from ai_embedded_company.api.routes.tasks import router as tasks_router
 from ai_embedded_company.api.routes.teams import router as teams_router
+from ai_embedded_company.api.routes.ws import router as ws_router
 from ai_embedded_company.storage import close_db, init_db
 
 
@@ -102,6 +103,7 @@ def create_app() -> FastAPI:
     app.include_router(evolution_router, prefix="/api/evolution", tags=["Evolution"])
     app.include_router(prompts_router, prefix="/api/prompts", tags=["Prompts"])
     app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"])
+    app.include_router(ws_router, prefix="/ws", tags=["WebSocket"])
 
     return app
 

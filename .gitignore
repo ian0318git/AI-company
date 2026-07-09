@@ -61,6 +61,7 @@ migrations/versions/*.pyc
 
 # Root temp files from autonomous cycles — use docs/cycles/ and tools/ instead
 /cycle*-report.md
+/_cycle*.py
 /tmp_*.py
 /tmp_*.sh
 /comparison_result.json

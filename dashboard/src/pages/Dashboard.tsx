@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api/client'
-import { Cpu, ListTodo, Lightbulb, GitBranch, Clock, AlertTriangle, CheckCircle, Users, FolderOpen, Coins, TrendingUp } from 'lucide-react'
+import { Cpu, ListTodo, Lightbulb, GitBranch, Clock, AlertTriangle, CheckCircle, Users, FolderOpen, Coins, TrendingUp, Wifi, WifiOff } from 'lucide-react'
 import { useTaskMetrics } from '../hooks/useTaskTime'
+import { useWebSocket } from '../hooks/useWebSocket'
 
 function formatMinutes(m: number): string {
   if (m < 1) return '<1m'
@@ -46,6 +47,7 @@ export default function Dashboard() {
   const [projectTimes, setProjectTimes] = useState<Map<string, ProjectTime>>(new Map())
   const [tokenHistory, setTokenHistory] = useState<{ date: string; tokens: number }[]>([])
   const { metrics } = useTaskMetrics(60_000)
+  const { snapshot: wsSnapshot, connectionState } = useWebSocket()
 
   const loadProjectTimes = (projects: any[]) => {
     if (!Array.isArray(projects)) return
@@ -120,7 +122,25 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">Dashboard</h2>
+      <div className="flex items-center gap-3 mb-6">
+        <h2 className="text-2xl font-bold">Dashboard</h2>
+        {/* Live connection indicator */}
+        <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${
+          connectionState === 'connected'
+            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+            : connectionState === 'connecting'
+            ? 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/30'
+            : 'bg-red-500/15 text-red-400 border border-red-500/30'
+        }`}>
+          {connectionState === 'connected' ? (
+            <><Wifi className="w-3 h-3" /> Live</>
+          ) : connectionState === 'connecting' ? (
+            <><span className="animate-pulse">◌</span> Connecting</>
+          ) : (
+            <><WifiOff className="w-3 h-3" /> Offline</>
+          )}
+        </span>
+      </div>
 
       {/* Main stats */}
       <div className="grid grid-cols-4 gap-4 mb-6">
@@ -137,6 +157,47 @@ export default function Dashboard() {
           </div>)
         })}
       </div>
+
+      {/* Live agent status (from WebSocket) */}
+      {wsSnapshot && (
+        <div className="border border-[hsl(var(--border))] rounded-lg p-4 bg-white/5 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <div className={`w-2 h-2 rounded-full ${wsSnapshot.tasks.running_count > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
+            <h3 className="text-lg font-semibold text-gray-200">
+              {wsSnapshot.tasks.running_count > 0
+                ? `${wsSnapshot.tasks.running_count} Agent${wsSnapshot.tasks.running_count > 1 ? 's' : ''} Running`
+                : 'All Agents Idle'}
+            </h3>
+            <span className="text-xs text-gray-500 ml-auto">
+              🪙 {wsSnapshot.tasks.total_tokens.toLocaleString()} total · {wsSnapshot.tasks.total} tasks
+            </span>
+          </div>
+          <div className="grid grid-cols-5 gap-3 text-xs">
+            <div className="bg-white/5 rounded p-2">
+              <p className="text-gray-500">Running</p>
+              <p className="text-lg font-bold text-emerald-400">{wsSnapshot.tasks.running_count}</p>
+            </div>
+            <div className="bg-white/5 rounded p-2">
+              <p className="text-gray-500">Ideas</p>
+              <p className="text-lg font-bold text-purple-400">{wsSnapshot.ideas.total}</p>
+            </div>
+            <div className="bg-white/5 rounded p-2">
+              <p className="text-gray-500">Pipelines</p>
+              <p className="text-lg font-bold text-green-400">{wsSnapshot.pipelines.total}</p>
+            </div>
+            <div className="bg-white/5 rounded p-2">
+              <p className="text-gray-500">In Progress</p>
+              <p className="text-lg font-bold text-yellow-400">
+                {(wsSnapshot.pipelines.by_phase?.implementation || 0) + (wsSnapshot.pipelines.by_phase?.testing || 0) + (wsSnapshot.pipelines.by_phase?.design || 0)}
+              </p>
+            </div>
+            <div className="bg-white/5 rounded p-2">
+              <p className="text-gray-500">Done</p>
+              <p className="text-lg font-bold text-blue-400">{wsSnapshot.pipelines.by_phase?.done || 0}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Time tracking stats */}
       {timeCards && (

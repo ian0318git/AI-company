@@ -79,7 +79,7 @@ else
         echo "[$TIMESTAMP] Cycle #$CYCLE"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-        claude --print --allowedTools "Bash(curl:*) Bash(git:*) Read Write Edit TaskCreate TaskUpdate Bash(python3:*)" -p "Autonomous cycle #$CYCLE. Scan ideas at http://127.0.0.1:8765/api/ideas/ — refine new ones, start pipelines, execute up to 3 high-priority todo tasks from http://127.0.0.1:8765/api/tasks/, advance completed pipelines. Report 3-5 bullets of what you did." 2>&1
+        claude --print --allowedTools "Bash(curl:*) Bash(git:*) Read Write Edit TaskCreate TaskUpdate Bash(python3:*)" -p "Autonomous cycle #$CYCLE. CRITICAL RULE: NEVER create new ideas. Only work on ideas that already exist in the inbox (created by the human user). If no tasks are todo, report 'Idle cycle' and skip. Scan ideas at http://127.0.0.1:8765/api/ideas/ — refine new ones that are in 'new' status, start pipelines for refined ones, execute up to 3 todo tasks from http://127.0.0.1:8765/api/tasks/, advance completed pipelines. Report 3-5 bullets of what you did." 2>&1
 
         echo "[$TIMESTAMP] Cycle #$CYCLE complete. Sleeping ${SLEEP_SEC}s..."
         sleep "$SLEEP_SEC"
