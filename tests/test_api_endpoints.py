@@ -394,3 +394,102 @@ async def test_delete_project(test_session: AsyncSession) -> None:
     assert resp.status_code == 404
 
     app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_update_project_name_only(test_session: AsyncSession) -> None:
+    """PATCH /api/projects/{id} with just a name field works (partial update)."""
+    project = ProjectModel(name="Original Name")
+    test_session.add(project)
+    await test_session.commit()
+    await test_session.refresh(project)
+
+    async def _override() -> AsyncSession:
+        yield test_session
+
+    app.dependency_overrides[get_session] = _override
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.patch(
+            f"/api/projects/{project.id}",
+            json={"name": "Updated Name"},
+        )
+    assert resp.status_code == 200
+    assert resp.json()["name"] == "Updated Name"
+    # Status should remain unchanged
+    assert resp.json()["status"] == "active"
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_create_team_and_list(test_session: AsyncSession) -> None:
+    """POST /api/teams/ then GET /api/teams/ lists it."""
+    project = ProjectModel(name="Team Project")
+    test_session.add(project)
+    await test_session.commit()
+    await test_session.refresh(project)
+
+    async def _override() -> AsyncSession:
+        yield test_session
+
+    app.dependency_overrides[get_session] = _override
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        create_resp = await client.post(
+            "/api/teams/",
+            json={
+                "name": "Test Team",
+                "project_id": project.id,
+                "members": [{"role": "backend-developer", "status": "idle"}],
+            },
+        )
+    assert create_resp.status_code == 201
+    team = create_resp.json()
+    assert team["name"] == "Test Team"
+    assert len(team["members"]) == 1
+
+    # List teams
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        list_resp = await client.get("/api/teams/")
+    assert list_resp.status_code == 200
+    body = list_resp.json()
+    assert body["total"] >= 1
+    assert any(t["id"] == team["id"] for t in body["items"])
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_get_team_by_id(test_session: AsyncSession) -> None:
+    """GET /api/teams/{id} returns the team."""
+    project = ProjectModel(name="Team Detail Project")
+    test_session.add(project)
+    await test_session.commit()
+    await test_session.refresh(project)
+
+    import json
+    from ai_embedded_company.storage.models import TeamModel
+    team_model = TeamModel(
+        name="Detail Team",
+        project_id=project.id,
+        members=json.dumps([{"role": "tech-lead", "status": "busy"}]),
+    )
+    test_session.add(team_model)
+    await test_session.commit()
+    await test_session.refresh(team_model)
+
+    async def _override() -> AsyncSession:
+        yield test_session
+
+    app.dependency_overrides[get_session] = _override
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get(f"/api/teams/{team_model.id}")
+    assert resp.status_code == 200
+    assert resp.json()["name"] == "Detail Team"
+
+    app.dependency_overrides.clear()
