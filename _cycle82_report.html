@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cycle #82 -- Idle Report</title>
+<style>
+body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2em auto; padding: 0 1em; background: #fafafa; color: #333; }
+h1 { font-size: 1.4em; border-bottom: 2px solid #ddd; padding-bottom: .3em; }
+.stat { display: flex; justify-content: space-between; padding: .3em 0; border-bottom: 1px solid #eee; }
+.stat-label { color: #666; }
+.stat-value { font-weight: 600; }
+.idle { color: #888; font-style: italic; }
+ul { padding-left: 1.2em; }
+li { margin: .4em 0; }
+.footer { margin-top: 2em; font-size: .85em; color: #999; }
+</style>
+</head>
+<body>
+<h1>Autonomous Cycle #82</h1>
+<p class="idle">System is fully idle -- all pipelines drained, zero actionable items.</p>
+
+<h2>System Status</h2>
+<div class="stat"><span class="stat-label">Ideas (new/refining)</span><span class="stat-value">0 / 0</span></div>
+<div class="stat"><span class="stat-label">Pending Tasks</span><span class="stat-value">0</span></div>
+<div class="stat"><span class="stat-label">Active Pipelines</span><span class="stat-value">0</span></div>
+<div class="stat"><span class="stat-label">Completed Pipelines</span><span class="stat-value">28</span></div>
+
+<h2>Activities</h2>
+<ul>
+<li>Scanned /api/ideas/ -- no new or refining ideas</li>
+<li>Scanned /api/tasks/ -- zero pending or in-progress tasks</li>
+<li>Scanned /api/pipelines/ -- all 28 pipelines are done</li>
+</ul>
+
+<div class="footer">Reported at 2026-07-09 19:44:21</div>
+</body>
+</html>
