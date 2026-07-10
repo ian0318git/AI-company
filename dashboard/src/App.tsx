@@ -9,6 +9,7 @@ import KnowledgeBase from './pages/KnowledgeBase'
 import ProjectSettings from './pages/ProjectSettings'
 import EvolutionPanel from './pages/EvolutionPanel'
 import PromptOptimization from './pages/PromptOptimization'
+import Timeline from './pages/Timeline'
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="/prompts" element={<PromptOptimization />} />
         <Route path="/hardware" element={<HardwarePanel />} />
         <Route path="/knowledge" element={<KnowledgeBase />} />
+        <Route path="/timeline" element={<Timeline />} />
         <Route path="/settings" element={<ProjectSettings />} />
       </Routes>
     </Layout>

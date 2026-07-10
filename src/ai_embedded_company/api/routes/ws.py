@@ -95,44 +95,54 @@ async def dashboard_ws(websocket: WebSocket) -> None:
 
 # ── Metric snapshot builders ───────────────────────────────────────────
 
-async def _build_metrics_snapshot() -> dict[str, Any]:
+async def _build_metrics_snapshot(
+    session: AsyncSession | None = None,
+) -> dict[str, Any]:
     """Build a snapshot of current dashboard metrics.
 
     Runs a lightweight query that completes under 200ms on moderate data.
+
+    Parameters
+    ----------
+    session : optional
+        An existing DB session to use (for testing).  When omitted a new
+        session is acquired via the ``get_session`` dependency.
     """
     try:
-        async for session in get_session():
-            # ── Task pulse ─────────────────────────────────────────────
-            task_result = await session.execute(select(TaskModel))
-            tasks = task_result.scalars().all()
+        if session is None:
+            async for s in get_session():
+                session = s
+                break
 
-            status_counts: dict[str, int] = {}
-            total_tokens = 0
-            running_count = 0
-            for t in tasks:
-                s = t.status or "todo"
-                status_counts[s] = status_counts.get(s, 0) + 1
-                total_tokens += t.tokens_used or 0
-                if t.status == "in_progress":
-                    running_count += 1
+        # ── Task pulse ─────────────────────────────────────────────
+        task_result = await session.execute(select(TaskModel))
+        tasks = task_result.scalars().all()
 
-            # ── Idea counts ────────────────────────────────────────────
-            idea_result = await session.execute(select(IdeaModel))
-            ideas = idea_result.scalars().all()
-            idea_status_counts: dict[str, int] = {}
-            for idea in ideas:
-                s = idea.status or "new"
-                idea_status_counts[s] = idea_status_counts.get(s, 0) + 1
+        status_counts: dict[str, int] = {}
+        total_tokens = 0
+        running_count = 0
+        for t in tasks:
+            s = t.status or "todo"
+            status_counts[s] = status_counts.get(s, 0) + 1
+            total_tokens += t.tokens_used or 0
+            if t.status == "in_progress":
+                running_count += 1
 
-            # ── Pipeline counts ────────────────────────────────────────
-            pipe_result = await session.execute(select(PipelineModel))
-            pipelines = pipe_result.scalars().all()
-            pipeline_phase_counts: dict[str, int] = {}
-            for p in pipelines:
-                phase = p.current_phase or "unknown"
-                pipeline_phase_counts[phase] = pipeline_phase_counts.get(phase, 0) + 1
+        # ── Idea counts ────────────────────────────────────────────
+        idea_result = await session.execute(select(IdeaModel))
+        ideas = idea_result.scalars().all()
+        idea_status_counts: dict[str, int] = {}
+        for idea in ideas:
+            s = idea.status or "new"
+            idea_status_counts[s] = idea_status_counts.get(s, 0) + 1
 
-            break
+        # ── Pipeline counts ────────────────────────────────────────
+        pipe_result = await session.execute(select(PipelineModel))
+        pipelines = pipe_result.scalars().all()
+        pipeline_phase_counts: dict[str, int] = {}
+        for p in pipelines:
+            phase = p.current_phase or "unknown"
+            pipeline_phase_counts[phase] = pipeline_phase_counts.get(phase, 0) + 1
     except Exception:
         # If DB is unavailable, return a minimal health snapshot
         return {"type": "snapshot", "db_available": False}

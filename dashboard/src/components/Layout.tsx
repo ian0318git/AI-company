@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, ListTodo, Lightbulb, GitBranch, Cpu, BookOpen, Settings, Globe, TrendingUp, Zap, Wifi, WifiOff } from 'lucide-react'
+import { LayoutDashboard, ListTodo, Lightbulb, GitBranch, Cpu, BookOpen, Settings, Globe, TrendingUp, Zap, Wifi, WifiOff, Clock } from 'lucide-react'
 import { useI18n } from '../i18n/context'
 import { useConnectionStatus } from '../hooks/useConnectionStatus'
 
@@ -10,6 +10,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const nav = [
     { to: '/', label: tr('nav.overview'), icon: LayoutDashboard },
     { to: '/tasks', label: tr('nav.taskWall'), icon: ListTodo },
+    { to: '/timeline', label: tr('nav.timeline'), icon: Clock },
     { to: '/ideas', label: tr('nav.ideaInbox'), icon: Lightbulb },
     { to: '/pipelines', label: tr('nav.pipelines'), icon: GitBranch },
     { to: '/evolution', label: tr('nav.evolution'), icon: TrendingUp },
