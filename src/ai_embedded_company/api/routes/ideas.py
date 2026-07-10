@@ -761,9 +761,13 @@ async def start_idea(
         # No refined_description — use a template based on pipeline step + agent
         return f"Pipeline: {pipeline_type} | Phase task: {title} | Agent: {agent}"
 
-    # 2. Create seed tasks (assigned cyclically across the dynamic team)
+    # 2. Generate task titles from the idea's refined_description when available,
+    #    falling back to the hardcoded pipeline template seed_tasks.
+    #    This fixes the "pipeline template task mismatch" where all ideas of a
+    #    given pipeline type got the same generic task titles.
+    task_titles = _generate_task_titles(idea_refined, pipeline_def["seed_tasks"])
     tasks_created = []
-    for i, task_title in enumerate(pipeline_def["seed_tasks"]):
+    for i, task_title in enumerate(task_titles):
         agent = final_team[i % len(final_team)] if final_team else "unassigned"
         task = TaskModel(
             project_id=idea_project_id,
@@ -1124,6 +1128,53 @@ async def archive_idea(
     await session.commit()
 
     return {"status": "archived", "title": idea.title, "id": idea_id}
+
+
+# ── Pipeline task generation fix: dynamic titles from idea description ─────────
+
+
+def _generate_task_titles(
+    refined_description: str | None,
+    fallback_tasks: list[str],
+) -> list[str]:
+    """Generate task titles from the idea's refined_description.
+
+    Parses "Phase N: <title>" patterns from the refined_description to produce
+    more relevant task titles than the generic pipeline template defaults.
+
+    Falls back to the hardcoded seed_tasks when:
+      - No refined_description is available
+      - No "Phase N:" patterns are found
+      - The number of parsed phases is fewer than the minimum needed (2)
+    """
+    if not refined_description or not refined_description.strip():
+        return fallback_tasks
+
+    import re
+    # Match patterns like "Phase 1: Do something" or "Phase 1 — Do something"
+    phase_pattern = re.compile(
+        r'(?:Phase\s+\d+|Step\s+\d+)\s*[:—\-–]\s*(.+?)(?=(?:Phase\s+\d+|Step\s+\d+)\s*[:—\-–]|\Z)',
+        re.IGNORECASE | re.DOTALL,
+    )
+    matches = phase_pattern.findall(refined_description)
+
+    titles = []
+    for m in matches:
+        # Take the first line of each match as the title
+        first_line = m.strip().split("\n")[0].strip().rstrip(".")
+        if first_line:
+            titles.append(first_line)
+
+    # If we found enough phase titles, use them; otherwise fall back
+    if len(titles) >= 2:
+        return titles
+
+    # Alternative: split on numbered items like "1. " or "1)"
+    numbered = re.findall(r'^\s*(?:\d+[.\)])\s*(.+?)$', refined_description, re.MULTILINE)
+    if len(numbered) >= 2:
+        return [n.strip().rstrip(".") for n in numbered]
+
+    return fallback_tasks
 
 
 # ── file helpers ───────────────────────────────────────────────────────────────

@@ -165,7 +165,7 @@ def auto_revive_best_idea() -> None:
         clean_title = clean_title[9:]
     clean_title = re.sub(r'\s*\(auto-seeded cycle #\d+\)\s*', '', clean_title).strip()
     revived_idea = {
-        "title": f"Revived: {clean_title} (auto-seeded cycle #308)",
+        "title": f"Revived: {clean_title} (auto-seeded cycle #320)",
         "raw_description": best.get("raw_description", ""),
         "tags": list(set(best.get("tags", []) + ["revived", "auto-seeded"])),
         "suggested_pipeline": best.get("suggested_pipeline", "quick-prototype"),
