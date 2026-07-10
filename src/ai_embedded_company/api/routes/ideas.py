@@ -568,6 +568,7 @@ async def get_idea(
 class RefinePayload(BaseModel):
     """Optional payload for the refine endpoint."""
     refined_description: str | None = None
+    suggested_pipeline: str | None = None
 
 
 @router.post("/{idea_id}/refine", response_model=Idea)
@@ -651,6 +652,12 @@ async def refine_idea(
     if backend_only and scores["web-fullstack"] > 0 and scores["quick-prototype"] < scores["web-fullstack"]:
         # Boost quick-prototype above web-fullstack when backend-only detected
         scores["quick-prototype"] = scores["web-fullstack"] + 1
+
+    # HINT: if the caller explicitly passed a suggested_pipeline, boost it by 1
+    if payload and payload.suggested_pipeline:
+        hint = payload.suggested_pipeline
+        if hint in scores:
+            scores[hint] += 1
 
     best = max(scores, key=scores.get)
     best_score = scores[best]

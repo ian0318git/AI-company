@@ -18,7 +18,35 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-INTERVAL="${1:-5m}"
+# ── Safety guard: require explicit confirmation ───────────────────────────
+# Without --yes, the script prints instructions and exits.
+# This prevents accidental runs (e.g.,半夜自動執行).
+if [ "${1:-}" != "--yes" ] && [ "${2:-}" != "--yes" ]; then
+    echo ""
+    echo "⚠️  AUTONOMOUS MODE — SAFETY GUARD"
+    echo ""
+    echo "  This script will start an autonomous loop that executes"
+    echo "  tasks from YOUR EXISTING ideas. It will NOT create new ideas."
+    echo ""
+    echo "  To confirm you want to start it, run:"
+    echo "    ./scripts/autonomous.sh --yes"
+    echo "    ./scripts/autonomous.sh --yes 10m"
+    echo ""
+    echo "  Or from the Dashboard → Idea Inbox → Start Auto Schedule"
+    echo ""
+    echo "  The --yes flag is required to prevent accidental runs."
+    echo ""
+    exit 0
+fi
+
+# Remove the --yes flag from args so parsing below still works
+ARGS=()
+for arg in "$@"; do
+    if [ "$arg" != "--yes" ]; then
+        ARGS+=("$arg")
+    fi
+done
+INTERVAL="${ARGS[0]:-5m}"
 
 # ── Ensure API server is running ──────────────────────────────────────────
 if ! curl -s http://127.0.0.1:8765/health > /dev/null 2>&1; then

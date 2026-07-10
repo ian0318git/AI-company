@@ -157,8 +157,15 @@ def auto_revive_best_idea() -> None:
             return
 
     # Create a revived idea
+    # Strip existing "Revived: " prefix and "(auto-seeded cycle #N)" suffix to prevent
+    # duplicated prefixes like "Revived: Revived: ..."
+    import re
+    clean_title = title
+    while clean_title.startswith("Revived: "):
+        clean_title = clean_title[9:]
+    clean_title = re.sub(r'\s*\(auto-seeded cycle #\d+\)\s*', '', clean_title).strip()
     revived_idea = {
-        "title": f"Revived: {title} (auto-seeded cycle #{255})",
+        "title": f"Revived: {clean_title} (auto-seeded cycle #308)",
         "raw_description": best.get("raw_description", ""),
         "tags": list(set(best.get("tags", []) + ["revived", "auto-seeded"])),
         "suggested_pipeline": best.get("suggested_pipeline", "quick-prototype"),

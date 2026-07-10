@@ -84,7 +84,7 @@ async def autonomous_start() -> dict:
 
     try:
         process = subprocess.Popen(
-            ["bash", str(script_path)],
+            ["bash", str(script_path), "--yes"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             start_new_session=True,

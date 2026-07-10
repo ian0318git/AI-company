@@ -228,15 +228,13 @@ From the Dashboard — open **Idea Inbox** → click **"Start Auto Schedule"** (
 Or from your terminal:
 
 ```bash
-# Start autonomous mode (runs every 5 minutes)
-./scripts/autonomous.sh
+# Safety: --yes is required to prevent accidental runs
+./scripts/autonomous.sh --yes          # Start (every 5 min)
+./scripts/autonomous.sh --yes 10m      # Every 10 minutes
+./scripts/autonomous.sh --yes 30m      # Every 30 minutes
 
-# Custom interval
-./scripts/autonomous.sh 10m    # Every 10 minutes
-./scripts/autonomous.sh 30m    # Every 30 minutes
-
-# One cycle only (test run)
-./scripts/autonomous.sh once
+# Without --yes, the script only prints instructions and exits
+./scripts/autonomous.sh                 # ⚠️  Prints help, does NOT start
 
 # Stop the autonomous loop
 ./scripts/autonomous.sh stop
