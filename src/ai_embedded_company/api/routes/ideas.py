@@ -719,16 +719,43 @@ async def start_idea(
     session.add(pipeline)
     await session.flush()
 
+    # 2. Build description for a pipeline seed task
+    def _build_task_description(title: str, agent: str) -> str:
+        """Populate a meaningful task description.
+        Priority:
+          1. Match the task title to an agent workflow step and use its description,
+             prefixed with the idea refined_description as context.
+          2. If no workflow match, use refined_description + template.
+          3. Fall back to a generic template with pipeline type and agent role.
+        """
+        if idea.refined_description and idea.refined_description.strip():
+            ctx = f"Project context: {idea.refined_description.strip()[:400]}"
+            # Try matching to a workflow step description
+            workflow = _AGENT_WORKFLOWS.get(pipeline_type, [])
+            for step in workflow:
+                step_title_lower = step["title"].lower()
+                title_lower = title.lower()
+                # Match if the step title appears in the task title or vice versa
+                if step_title_lower in title_lower or title_lower in step_title_lower:
+                    step_desc = step.get("description", "").strip()
+                    if step_desc:
+                        return f"{ctx}\n\nGoal: {step_desc}"
+            # No workflow match — use refined_description directly
+            return f"{ctx}\n\nDeliverable: {title}"
+        # No refined_description — use a template based on pipeline step + agent
+        return f"Pipeline: {pipeline_type} | Phase task: {title} | Agent: {agent}"
+
     # 2. Create seed tasks (assigned cyclically across the dynamic team)
     tasks_created = []
     for i, task_title in enumerate(pipeline_def["seed_tasks"]):
+        agent = final_team[i % len(final_team)] if final_team else "unassigned"
         task = TaskModel(
             project_id=idea.project_id,
             title=task_title,
-            description="",
+            description=_build_task_description(task_title, agent),
             status="todo",
             priority="high" if i == 0 else "medium",
-            assigned_agent=final_team[i % len(final_team)] if final_team else None,
+            assigned_agent=agent,
         )
         session.add(task)
         tasks_created.append(task)
