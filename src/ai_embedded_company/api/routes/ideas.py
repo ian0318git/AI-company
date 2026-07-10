@@ -23,6 +23,145 @@ from ai_embedded_company.types import AgentRole, Idea, IdeaCreate, PaginatedResp
 
 router = APIRouter()
 
+# ── Pipeline-type keyword matching constants ───────────────────────────────────
+# These are module-level so they can be imported and tested directly.
+# Keep in sync with the scoring function below.
+
+PIPELINE_KEYWORDS: dict[str, list[str]] = {
+    "embedded-firmware": [
+        "m5stack", "esp32", "stm32", "arduino", "sensor", "motor",
+        "led", "gpio", "i2c", "spi", "firmware", "mcu", "rtos",
+        "embedded", "韌體", "嵌入式", "開發板",
+    ],
+    "embedded-linux": [
+        "linux", "kernel", "driver", "buildroot", "yocto",
+        "raspberry", "beaglebone",
+    ],
+    "web-fullstack": [
+        "web", "website", "dashboard", "api", "frontend", "backend",
+        "react", "vue", "app", "網頁", "前端", "後端",
+    ],
+    "research-spike": [
+        "分析", "分析報告", "report", "research", "研究", "市場",
+        "就業", "就業市場", "survey", "調研", "簡報", "文件",
+    ],
+    "quick-prototype": [
+        "maintenance", "self-improvement", "evolution", "antibody",
+        "pipeline-hardening", "pipeline", "cleanup", "快速原型",
+        "quick", "prototype", "mvp",
+    ],
+}
+
+PIPELINE_NEGATIVE_KEYWORDS: dict[str, list[str]] = {
+    "embedded-firmware": [
+        "web", "frontend", "react", "vue", "api", "backend",
+        "純軟體", "software-only", "maintenance",
+        "evolution", "self-improvement", "antibody",
+    ],
+    "embedded-linux": [
+        "arduino", "mcu", "單晶片", "sensor", "embedded",
+    ],
+    "web-fullstack": [
+        "embedded", "firmware", "mcu", "韌體", "硬體", "c++",
+        "c/c++", "sensor", "driver", "kernel",
+        "self-improvement", "evolution", "antibody",
+        "pipeline-hardening", "pipeline",
+    ],
+    "research-spike": [
+        "web", "frontend", "react", "vue", "backend", "api",
+        "embedded", "firmware", "mcu", "driver",
+        "self-improvement", "evolution", "antibody",
+        "pipeline-hardening", "pipeline",
+        "database", "dashboard", "fullstack",
+    ],
+    # quick-prototype has no negative keywords
+}
+
+# Tiebreakers: higher = preferred when scores are equal
+PIPELINE_TIEBREAKERS: dict[str, int] = {
+    "embedded-firmware": 5,
+    "embedded-linux": 4,
+    "web-fullstack": 3,
+    "research-spike": 2,
+    "quick-prototype": 1,
+}
+
+# Backend-only detection: these keywords suggest a pure backend task (no UI)
+_BACKEND_KEYWORDS = ["backend", "python", "api", "fastapi"]
+_FRONTEND_KEYWORDS = ["react", "vue", "frontend", "css", "html", "typescript",
+                       "ui/ux", "wireframe"]
+
+
+def score_pipeline_type(
+    description: str,
+    tags: list[str],
+    pipeline_type: str,
+) -> int:
+    """Score how well an idea matches a pipeline type.
+
+    Higher = better match. -999 = excluded by negative keyword.
+    Description words score 2 each, tag matches score 1 each.
+    Tiebreaker is added only when at least one keyword matched.
+    """
+    desc_lower = description.lower()
+    all_tags_lower = [t.lower() for t in tags]
+
+    kw_list = PIPELINE_KEYWORDS.get(pipeline_type, [])
+    negative_kw = PIPELINE_NEGATIVE_KEYWORDS.get(pipeline_type, [])
+    tiebreaker = PIPELINE_TIEBREAKERS.get(pipeline_type, 0)
+
+    score = 0
+    for kw in kw_list:
+        if kw in desc_lower:
+            score += 2
+    for t in all_tags_lower:
+        if t in [kw.lower() for kw in kw_list]:
+            score += 1
+    # Negative keywords = instant exclusion
+    for nkw in negative_kw:
+        if nkw in desc_lower or nkw in all_tags_lower:
+            return -999
+    # Only add tiebreaker if there's at least one keyword match
+    if score > 0:
+        return score + tiebreaker
+    return score  # 0 — no matches, don't inflate with tiebreaker
+
+
+def select_pipeline_type(
+    description: str,
+    tags: list[str],
+    suggested_hint: str | None = None,
+) -> str:
+    """Select the best pipeline type for an idea using keyword scoring.
+
+    Evaluates all pipeline types, applies backend-only fallback, and
+    respects an optional caller hint.
+    """
+    desc_lower = description.lower()
+    all_tags_lower = [t.lower() for t in tags]
+
+    scores: dict[str, int] = {}
+    for ptype in PIPELINE_KEYWORDS:
+        scores[ptype] = score_pipeline_type(description, tags, ptype)
+
+    # Backend-only fallback: if the idea mentions only backend/Python with
+    # NO frontend framework imports, prefer quick-prototype over web-fullstack
+    backend_only = (
+        any(kw in desc_lower for kw in _BACKEND_KEYWORDS)
+        and not any(kw in desc_lower for kw in _FRONTEND_KEYWORDS)
+    )
+    if backend_only and scores["web-fullstack"] > 0 and scores["quick-prototype"] < scores["web-fullstack"]:
+        scores["quick-prototype"] = scores["web-fullstack"] + 1
+
+    # HINT: if the caller explicitly passed a suggested_pipeline, boost it by 1
+    if suggested_hint and suggested_hint in scores:
+        scores[suggested_hint] += 1
+
+    best = max(scores, key=scores.get)
+    best_score = scores[best]
+    return best if best_score > 0 else "quick-prototype"
+
+
 # ── Pipeline step and agent definitions per type ──────────────────────────────
 
 _PIPELINE_DEFS: dict[str, dict] = {
@@ -589,92 +728,17 @@ async def refine_idea(
         raise HTTPException(status_code=404, detail="Idea not found")
 
     # Heuristic pipeline suggestion with scoring, negative keywords, and tie-breaking
-    desc_lower = idea.raw_description.lower()
     try:
         tags = json.loads(idea.tags) if isinstance(idea.tags, str) else idea.tags
     except (json.JSONDecodeError, TypeError):
         tags = []
 
-    all_tags_lower = [t.lower() if isinstance(t, str) else t for t in tags]
-
-    embedded_kw = ["m5stack", "esp32", "stm32", "arduino", "sensor", "motor",
-                   "led", "gpio", "i2c", "spi", "firmware", "mcu", "rtos",
-                   "embedded", "韌體", "嵌入式", "開發板"]
-    linux_kw = ["linux", "kernel", "driver", "buildroot", "yocto",
-                "raspberry", "beaglebone"]
-    web_kw = ["web", "website", "dashboard", "api", "frontend", "backend",
-              "react", "vue", "app", "網頁", "前端", "後端"]
-    research_kw = ["分析", "分析報告", "report", "research", "研究", "市場",
-                   "就業", "就業市場", "survey", "調研", "簡報", "文件"]
-    quick_kw = ["maintenance", "self-improvement", "evolution", "antibody",
-                "pipeline-hardening", "pipeline", "cleanup", "快速原型",
-                "quick", "prototype", "mvp"]
-
-    # Negative keywords: if ANY appear, exclude that pipeline type
-    embedded_negative = ["web", "frontend", "react", "vue", "api", "backend",
-                         "純軟體", "software-only", "maintenance",
-                         "evolution", "self-improvement", "antibody"]
-    web_negative = ["embedded", "firmware", "mcu", "韌體", "硬體", "c++",
-                    "c/c++", "sensor", "driver", "kernel",
-                    "self-improvement", "evolution", "antibody",
-                    "pipeline-hardening", "pipeline"]
-    linux_negative = ["arduino", "mcu", "單晶片", "sensor", "embedded"]
-    # research-spike had NO exclusions — add them to prevent research being
-    # selected for development/pipeline/maintenance ideas
-    research_negative = ["web", "frontend", "react", "vue", "backend", "api",
-                         "embedded", "firmware", "mcu", "driver",
-                         "self-improvement", "evolution", "antibody",
-                         "pipeline-hardening", "pipeline",
-                         "database", "dashboard", "fullstack"]
-
-    def _score_pipeline(kw_list, negative_kw, tiebreaker):
-        """Score a pipeline type. Higher = better match. Negative = exclusion.
-        Tiebreaker only applies when at least one keyword matched."""
-        score = 0
-        for kw in kw_list:
-            if kw in desc_lower:
-                score += 2
-        for t in all_tags_lower:
-            if t in [kw.lower() for kw in kw_list]:
-                score += 1
-        # Negative keywords = instant exclusion
-        for nkw in negative_kw:
-            if nkw in desc_lower or nkw in all_tags_lower:
-                return -999
-        # Only add tiebreaker if there's at least one keyword match
-        if score > 0:
-            return score + tiebreaker
-        return score  # 0 — no matches, don't inflate with tiebreaker
-
-    scores = {
-        "embedded-firmware": _score_pipeline(embedded_kw, embedded_negative, 5),
-        "embedded-linux": _score_pipeline(linux_kw, linux_negative, 4),
-        "web-fullstack": _score_pipeline(web_kw, web_negative, 3),
-        "research-spike": _score_pipeline(research_kw, research_negative, 2),
-        "quick-prototype": _score_pipeline(quick_kw, [], 1),
-    }
-
-    # Backend-only fallback: if the idea mentions only backend/Python with
-    # NO frontend framework imports (react, vue, css, html), prefer quick-prototype
-    backend_only = (
-        any(kw in desc_lower for kw in ["backend", "python", "api", "fastapi"])
-        and not any(kw in desc_lower for kw in ["react", "vue", "frontend",
-                                                  "css", "html", "typescript",
-                                                  "ui/ux", "wireframe"])
+    suggested_hint = payload.suggested_pipeline if payload else None
+    suggested_pipeline = select_pipeline_type(
+        description=idea.raw_description or "",
+        tags=tags or [],
+        suggested_hint=suggested_hint,
     )
-    if backend_only and scores["web-fullstack"] > 0 and scores["quick-prototype"] < scores["web-fullstack"]:
-        # Boost quick-prototype above web-fullstack when backend-only detected
-        scores["quick-prototype"] = scores["web-fullstack"] + 1
-
-    # HINT: if the caller explicitly passed a suggested_pipeline, boost it by 1
-    if payload and payload.suggested_pipeline:
-        hint = payload.suggested_pipeline
-        if hint in scores:
-            scores[hint] += 1
-
-    best = max(scores, key=scores.get)
-    best_score = scores[best]
-    suggested_pipeline = best if best_score > 0 else "quick-prototype"
 
     idea.suggested_pipeline = suggested_pipeline
     if payload and payload.refined_description:
