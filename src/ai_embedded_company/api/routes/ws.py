@@ -10,13 +10,14 @@ from __future__ import annotations
 import asyncio
 import json
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ai_embedded_company.storage import get_session
+from ai_embedded_company.storage import get_session, get_sessionmaker
 from ai_embedded_company.storage.models import TaskModel, IdeaModel, PipelineModel
 
 router = APIRouter()
@@ -106,14 +107,25 @@ async def _build_metrics_snapshot(
     ----------
     session : optional
         An existing DB session to use (for testing).  When omitted a new
-        session is acquired via the ``get_session`` dependency.
+        session is acquired directly (not via the ``get_session`` generator,
+        to avoid ``IllegalStateChangeError`` on task cancellation).
     """
-    try:
-        if session is None:
-            async for s in get_session():
-                session = s
-                break
+    from sqlalchemy.exc import IllegalStateChangeError as _IllegalStateChangeError
 
+    if session is None:
+        sm = get_sessionmaker()
+        try:
+            async with sm() as session:
+                return await _build_snapshot(session)
+        except _IllegalStateChangeError:
+            return {"type": "snapshot", "db_available": False,
+                    "error": "Session closed during cancellation"}
+    return await _build_snapshot(session)
+
+
+async def _build_snapshot(session: AsyncSession) -> dict[str, Any]:
+    """Core snapshot logic — runs queries against *session*."""
+    try:
         # ── Task pulse ─────────────────────────────────────────────
         task_result = await session.execute(select(TaskModel))
         tasks = task_result.scalars().all()
@@ -143,9 +155,37 @@ async def _build_metrics_snapshot(
         for p in pipelines:
             phase = p.current_phase or "unknown"
             pipeline_phase_counts[phase] = pipeline_phase_counts.get(phase, 0) + 1
-    except Exception:
+
+        # ── Per-agent telemetry ────────────────────────────────────
+        in_prog_result = await session.execute(
+            select(TaskModel).where(TaskModel.status == "in_progress")
+        )
+        in_prog_tasks = in_prog_result.scalars().all()
+
+        agents_telemetry: list[dict[str, Any]] = []
+        total_tokens_burn: dict[str, int] = {}
+        now = datetime.now(timezone.utc)
+        for t in in_prog_tasks:
+            agent = t.assigned_agent or "unassigned"
+            elapsed = 0.0
+            if t.started_at:
+                # started_at is timezone-naive from SQLite — treat as UTC
+                if t.started_at.tzinfo is None:
+                    started = t.started_at.replace(tzinfo=timezone.utc)
+                else:
+                    started = t.started_at
+                elapsed = (now - started).total_seconds()
+            agents_telemetry.append({
+                "agent": agent,
+                "task_title": t.title,
+                "task_id": t.id,
+                "elapsed_seconds": round(elapsed, 1),
+                "tokens_used": t.tokens_used or 0,
+            })
+            total_tokens_burn[agent] = total_tokens_burn.get(agent, 0) + (t.tokens_used or 0)
+    except Exception as exc:
         # If DB is unavailable, return a minimal health snapshot
-        return {"type": "snapshot", "db_available": False}
+        return {"type": "snapshot", "db_available": False, "error": str(exc)}
 
     return {
         "type": "snapshot",
@@ -165,4 +205,6 @@ async def _build_metrics_snapshot(
             "total": len(pipelines),
             "by_phase": pipeline_phase_counts,
         },
+        "agents": agents_telemetry,
+        "agent_token_burn": total_tokens_burn,
     }

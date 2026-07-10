@@ -902,3 +902,51 @@ async def test_build_task_description_fallback_template(
             f"Task '{task['title']}' description: {desc[:100]}"
 
     app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_start_idea_auto_advances_pipeline_through_initial_phases(
+    test_session: AsyncSession,
+) -> None:
+    """When starting an idea with a refined_description, the pipeline auto-advances
+    through idea/requirements/design phases and lands on implementation."""
+    async def _override() -> AsyncSession:
+        yield test_session
+
+    app.dependency_overrides[get_session] = _override
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        create_resp = await client.post("/api/ideas/", json={
+            "title": "Auto-Advance Test Idea",
+            "raw_description": "Test idea for auto-advance",
+            "refined_description": "Phase 1: Define. Phase 2: Build. Phase 3: Test.",
+            "tags": ["test"],
+            "suggested_pipeline": "web-fullstack",
+        })
+    assert create_resp.status_code == 201
+    idea_id = create_resp.json()["id"]
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        await client.post(f"/api/ideas/{idea_id}/refine", json={
+            "refined_description": "Phase 1: Define. Phase 2: Build. Phase 3: Test.",
+        })
+        start_resp = await client.post(f"/api/ideas/{idea_id}/start")
+
+    assert start_resp.status_code == 200, f"start failed: {start_resp.text[:200]}"
+    result = start_resp.json()
+
+    pipeline = result.get("pipeline", {})
+    assert pipeline.get("current_phase") is not None, "Pipeline missing current_phase"
+    # Should have auto-advanced past "idea" to at least "implementation"
+    assert pipeline["current_phase"] == "implementation", \
+        f"Expected pipeline at 'implementation', got '{pipeline.get('current_phase')}'"
+
+    # Verify via GET endpoint
+    pipeline_id = pipeline["id"]
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        get_resp = await client.get(f"/api/pipelines/{pipeline_id}")
+    assert get_resp.status_code == 200
+    assert get_resp.json()["current_phase"] == "implementation"
+
+    app.dependency_overrides.clear()

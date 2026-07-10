@@ -2,6 +2,14 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 
 type ConnectionState = 'connecting' | 'connected' | 'disconnected'
 
+export interface AgentTelemetry {
+  agent: string
+  task_title: string
+  task_id: string
+  elapsed_seconds: number
+  tokens_used: number
+}
+
 export interface WsSnapshot {
   type: 'snapshot' | 'pong'
   db_available: boolean
@@ -20,6 +28,10 @@ export interface WsSnapshot {
     total: number
     by_phase: Record<string, number>
   }
+  /** Per-agent telemetry for currently running agents (empty array when idle). */
+  agents: AgentTelemetry[]
+  /** Per-agent token burn totals for currently running agents. */
+  agent_token_burn: Record<string, number>
 }
 
 export interface UseWebSocketResult {

@@ -19,7 +19,7 @@ from ai_embedded_company.storage.models import (
     TaskModel,
     TeamModel,
 )
-from ai_embedded_company.types import AgentRole, Idea, IdeaCreate, PaginatedResponse
+from ai_embedded_company.types import AgentRole, Idea, IdeaCreate, PaginatedResponse, PipelinePhase
 
 router = APIRouter()
 
@@ -701,6 +701,13 @@ async def start_idea(
     extra_agents = [g["agent"] for g in gaps[:3] if g["agent"] not in base_team and g["relevance"] >= 2]
     final_team = base_team + extra_agents
 
+    # Snapshot idea attributes before any flush/expire operations
+    idea_refined = idea.refined_description
+    idea_raw = idea.raw_description
+    idea_project_id = idea.project_id
+    idea_title = idea.title
+    idea_id_val = idea.id
+
     # 1. Create pipeline with steps
     now = datetime.now(timezone.utc).isoformat()
     steps = [
@@ -710,9 +717,9 @@ async def start_idea(
         for s in pipeline_def["phases"]
     ]
     pipeline = PipelineModel(
-        project_id=idea.project_id,
+        project_id=idea_project_id,
         pipeline_type=pipeline_type,
-        idea_id=idea.id,
+        idea_id=idea_id_val,
         steps=json.dumps(steps),
         current_phase=steps[0]["phase"],
     )
@@ -720,6 +727,8 @@ async def start_idea(
     await session.flush()
 
     # 2. Build description for a pipeline seed task
+    # NOTE: We snapshot idea attributes BEFORE the flush to avoid SQLAlchemy
+    # session expiry causing lazy-load failures in the closure below.
     def _build_task_description(title: str, agent: str) -> str:
         """Populate a meaningful task description.
         Priority:
@@ -728,8 +737,8 @@ async def start_idea(
           2. If no workflow match, use refined_description + template.
           3. Fall back to a generic template with pipeline type and agent role.
         """
-        if idea.refined_description and idea.refined_description.strip():
-            ctx = f"Project context: {idea.refined_description.strip()[:400]}"
+        if idea_refined and idea_refined.strip():
+            ctx = f"Project context: {idea_refined.strip()[:400]}"
             # Try matching to a workflow step description
             workflow = _AGENT_WORKFLOWS.get(pipeline_type, [])
             for step in workflow:
@@ -750,7 +759,7 @@ async def start_idea(
     for i, task_title in enumerate(pipeline_def["seed_tasks"]):
         agent = final_team[i % len(final_team)] if final_team else "unassigned"
         task = TaskModel(
-            project_id=idea.project_id,
+            project_id=idea_project_id,
             title=task_title,
             description=_build_task_description(task_title, agent),
             status="todo",
@@ -774,6 +783,17 @@ async def start_idea(
 
     # 4. Update idea status
     idea.status = "in_progress"
+
+    # 5. Antibody: auto-advance pipeline through initial phases
+    #    Since the idea is already refined, skip idea/requirements/design phases
+    #    and land on "implementation" so the pipeline doesn't sit in todo phases.
+    advance_phases = ("idea", "requirements", "design")
+    phase_order = [ph.value for ph in PipelinePhase]
+    for skip_phase in advance_phases:
+        if pipeline.current_phase == skip_phase:
+            next_idx = min(phase_order.index(skip_phase) + 1, len(phase_order) - 1)
+            pipeline.current_phase = phase_order[next_idx]
+
     await session.commit()
     await session.refresh(idea)
 

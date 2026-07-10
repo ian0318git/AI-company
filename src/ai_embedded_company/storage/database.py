@@ -121,14 +121,35 @@ def _get_sessionmaker() -> async_sessionmaker[AsyncSession]:
     return _sessionmaker
 
 
+def get_sessionmaker() -> async_sessionmaker[AsyncSession]:
+    """Return the global async session factory.
+
+    Use this in cancellation-sensitive contexts (e.g. WebSocket handlers)
+    to create sessions directly with ``async with get_sessionmaker() as s:``
+    instead of using the ``get_session`` async generator, which can hit
+    ``IllegalStateChangeError`` during generator cleanup on cancellation.
+    """
+    return _get_sessionmaker()
+
+
 async def get_session() -> AsyncIterator[AsyncSession]:
-    """Yield an async database session (FastAPI dependency)."""
+    """Yield an async database session (FastAPI dependency).
+
+    The ``async with`` context manager handles close automatically
+    when the generator is cleaned up.
+    """
+    from sqlalchemy.exc import IllegalStateChangeError as _IllegalStateChangeError
+
     sessionmaker = _get_sessionmaker()
     async with sessionmaker() as session:
         try:
             yield session
-        finally:
-            await session.close()
+        except _IllegalStateChangeError:
+            # Raised when the calling coroutine is cancelled mid-query
+            # (e.g. WebSocket disconnect) and the session state machine
+            # is in a transition.  The session is being torn down, so
+            # this is benign.
+            logger.debug("Session generator cancelled — IllegalStateChangeError swallowed")
 
 
 async def init_db():

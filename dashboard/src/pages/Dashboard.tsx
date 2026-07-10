@@ -197,6 +197,66 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Live Agent Tracking Panel — individual agent telemetry */}
+      {wsSnapshot && wsSnapshot.agents && wsSnapshot.agents.length > 0 && (
+        <div className="border border-[hsl(var(--border))] rounded-lg p-4 bg-white/5 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <h3 className="text-lg font-semibold text-gray-200">Live Agent Tracking</h3>
+            <span className="text-xs text-gray-500 ml-auto">
+              {wsSnapshot.agents.length} agent{wsSnapshot.agents.length > 1 ? 's' : ''} active
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-gray-500 uppercase border-b border-white/10">
+                  <th className="text-left py-2 pr-4">Agent</th>
+                  <th className="text-left py-2 px-4">Task</th>
+                  <th className="text-right py-2 px-4 w-28">Elapsed</th>
+                  <th className="text-right py-2 px-4 w-28">Tokens</th>
+                  <th className="text-right py-2 pl-4 w-36">Burn Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {wsSnapshot.agents.map((a, i) => {
+                  const tokensPerSec = a.elapsed_seconds > 0 ? a.tokens_used / a.elapsed_seconds : 0
+                  return (
+                    <tr key={a.task_id} className={i < wsSnapshot.agents.length - 1 ? 'border-b border-white/5' : ''}>
+                      <td className="py-2.5 pr-4">
+                        <span className="font-medium text-gray-200">{agentLabels[a.agent] || a.agent}</span>
+                      </td>
+                      <td className="py-2.5 px-4 text-gray-400 max-w-[200px] truncate" title={a.task_title}>
+                        {a.task_title || '—'}
+                      </td>
+                      <td className="py-2.5 px-4 text-right text-gray-300 font-mono">
+                        {a.elapsed_seconds >= 60
+                          ? `${Math.floor(a.elapsed_seconds / 60)}m ${Math.round(a.elapsed_seconds % 60)}s`
+                          : `${Math.round(a.elapsed_seconds)}s`}
+                      </td>
+                      <td className="py-2.5 px-4 text-right text-gray-300 font-mono">
+                        {a.tokens_used.toLocaleString()}
+                      </td>
+                      <td className="py-2.5 pl-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="h-1.5 bg-white/10 rounded-full overflow-hidden flex-1 max-w-[80px]">
+                            <div className="h-full bg-emerald-500 rounded-full transition-all"
+                                 style={{ width: `${Math.min(tokensPerSec * 10, 100)}%` }} />
+                          </div>
+                          <span className="text-xs text-gray-500 font-mono w-16 text-right">
+                            {tokensPerSec > 1 ? `${tokensPerSec.toFixed(1)}/s` : '<1/s'}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Time tracking stats */}
       {timeCards && (
         <div className="grid grid-cols-4 gap-4 mb-6">
