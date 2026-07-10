@@ -106,11 +106,19 @@ def register_tools(mcp):
             linux_kw = ["linux", "kernel", "driver", "buildroot", "yocto", "raspberry", "beaglebone"]
             web_kw = ["web", "website", "dashboard", "api", "frontend", "backend", "react", "vue", "app", "網頁", "前端", "後端"]
             research_kw = ["分析", "分析報告", "report", "research", "研究", "市場", "就業", "就業市場", "survey", "調研", "簡報", "文件"]
+            quick_kw = ["maintenance", "self-improvement", "evolution", "antibody",
+                        "pipeline-hardening", "pipeline", "cleanup", "快速原型",
+                        "quick", "prototype", "mvp"]
 
             # Negative keywords: if ANY of these appear in description/tags, exclude the pipeline type
-            embedded_negative = ["web", "frontend", "react", "vue", "api", "backend", "純軟體", "software-only", "maintenance"]
-            web_negative = ["embedded", "firmware", "mcu", "韌體", "硬體", "c++", "c/c++"]
+            embedded_negative = ["web", "frontend", "react", "vue", "api", "backend", "純軟體", "software-only", "maintenance", "evolution", "self-improvement", "antibody"]
+            web_negative = ["embedded", "firmware", "mcu", "韌體", "硬體", "c++", "c/c++", "self-improvement", "evolution", "antibody", "pipeline-hardening", "pipeline"]
             linux_negative = ["embedded", "arduino", "mcu", "單晶片", "sensor"]
+            research_negative = ["web", "frontend", "react", "vue", "backend", "api",
+                                 "embedded", "firmware", "mcu", "driver",
+                                 "self-improvement", "evolution", "antibody",
+                                 "pipeline-hardening", "pipeline",
+                                 "database", "dashboard", "fullstack"]
 
             def _score_pipeline(kw_list: list[str], negative_kw: list[str], tiebreaker: int) -> int:
                 """Score a pipeline type. Higher = better match.
@@ -142,9 +150,20 @@ def register_tools(mcp):
                 "embedded-firmware": _score_pipeline(embedded_kw, embedded_negative, 5),
                 "embedded-linux": _score_pipeline(linux_kw, linux_negative, 4),
                 "web-fullstack": _score_pipeline(web_kw, web_negative, 3),
-                "research-spike": _score_pipeline(research_kw, [], 2),
-                "quick-prototype": _score_pipeline([], [], 1),  # baseline 1pt
+                "research-spike": _score_pipeline(research_kw, research_negative, 2),
+                "quick-prototype": _score_pipeline(quick_kw, [], 1),
             }
+
+            # Backend-only fallback: if the idea mentions only backend/Python
+            # with NO frontend framework keywords, prefer quick-prototype
+            backend_only = (
+                any(kw in desc_lower for kw in ["backend", "python", "api", "fastapi"])
+                and not any(kw in desc_lower for kw in ["react", "vue", "frontend",
+                                                         "css", "html", "typescript",
+                                                         "ui/ux", "wireframe"])
+            )
+            if backend_only and scores["web-fullstack"] > 0 and scores["quick-prototype"] < scores["web-fullstack"]:
+                scores["quick-prototype"] = scores["web-fullstack"] + 1
 
             # Pick highest-scoring pipeline type
             best = max(scores, key=scores.get)

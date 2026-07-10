@@ -606,13 +606,26 @@ async def refine_idea(
               "react", "vue", "app", "網頁", "前端", "後端"]
     research_kw = ["分析", "分析報告", "report", "research", "研究", "市場",
                    "就業", "就業市場", "survey", "調研", "簡報", "文件"]
+    quick_kw = ["maintenance", "self-improvement", "evolution", "antibody",
+                "pipeline-hardening", "pipeline", "cleanup", "快速原型",
+                "quick", "prototype", "mvp"]
 
     # Negative keywords: if ANY appear, exclude that pipeline type
     embedded_negative = ["web", "frontend", "react", "vue", "api", "backend",
-                         "純軟體", "software-only", "maintenance"]
+                         "純軟體", "software-only", "maintenance",
+                         "evolution", "self-improvement", "antibody"]
     web_negative = ["embedded", "firmware", "mcu", "韌體", "硬體", "c++",
-                    "c/c++", "sensor", "driver", "kernel"]
+                    "c/c++", "sensor", "driver", "kernel",
+                    "self-improvement", "evolution", "antibody",
+                    "pipeline-hardening", "pipeline"]
     linux_negative = ["arduino", "mcu", "單晶片", "sensor", "embedded"]
+    # research-spike had NO exclusions — add them to prevent research being
+    # selected for development/pipeline/maintenance ideas
+    research_negative = ["web", "frontend", "react", "vue", "backend", "api",
+                         "embedded", "firmware", "mcu", "driver",
+                         "self-improvement", "evolution", "antibody",
+                         "pipeline-hardening", "pipeline",
+                         "database", "dashboard", "fullstack"]
 
     def _score_pipeline(kw_list, negative_kw, tiebreaker):
         """Score a pipeline type. Higher = better match. Negative = exclusion.
@@ -637,8 +650,8 @@ async def refine_idea(
         "embedded-firmware": _score_pipeline(embedded_kw, embedded_negative, 5),
         "embedded-linux": _score_pipeline(linux_kw, linux_negative, 4),
         "web-fullstack": _score_pipeline(web_kw, web_negative, 3),
-        "research-spike": _score_pipeline(research_kw, [], 2),
-        "quick-prototype": _score_pipeline([], [], 1),
+        "research-spike": _score_pipeline(research_kw, research_negative, 2),
+        "quick-prototype": _score_pipeline(quick_kw, [], 1),
     }
 
     # Backend-only fallback: if the idea mentions only backend/Python with
