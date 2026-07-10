@@ -79,7 +79,7 @@ export default function IdeaInbox() {
   const fetchIdeas = async () => {
     try {
       const data = await api.ideas.list()
-      setIdeas(Array.isArray(data) ? data : (data as any).ideas || [])
+      setIdeas(Array.isArray(data) ? data : (data as any).items || (data as any).ideas || [])
     } catch (e) { console.warn('[IdeaInbox] fetchIdeas', e) }
     finally { setLoadingIdeas(false) }
   }

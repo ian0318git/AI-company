@@ -62,19 +62,17 @@ export default function Dashboard() {
     // Load consolidated dashboard metrics
     api.dashboard.metrics().then(setDm).catch(() => {})
     // Load active + recent completed projects (for time/token breakdown)
-    api.projects.list('active').then(projects => {
-      if (Array.isArray(projects)) {
-        setActiveProjects(projects)
-        loadProjectTimes(projects)
-      }
+    api.projects.list('active').then(res => {
+      const list = Array.isArray(res) ? res : (res as any).items || []
+      setActiveProjects(list)
+      loadProjectTimes(list)
     }).catch(e => console.warn('[Dashboard]', e))
     // Load last 5 completed projects with time data
-    api.projects.list('completed').then(projects => {
-      if (Array.isArray(projects)) {
-        const recent = projects.slice(0, 5)
-        setCompletedProjects(recent)
-        loadProjectTimes(recent)
-      }
+    api.projects.list('completed').then(res => {
+      const list = Array.isArray(res) ? res : (res as any).items || []
+      const recent = list.slice(0, 5)
+      setCompletedProjects(recent)
+      loadProjectTimes(recent)
     }).catch(e => console.warn('[Dashboard]', e))
     // Load daily token history
     api.tasks.tokenHistory().then(d => {

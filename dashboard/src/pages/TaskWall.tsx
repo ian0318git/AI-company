@@ -75,14 +75,15 @@ export default function TaskWall() {
     try {
       setError(null)
       const data = await api.tasks.list()
+      const taskList = Array.isArray(data) ? data : (data as any).items || []
       const grouped: Record<string, any[]> = {
         todo: [], in_progress: [], blocked: [], review: [], done: [],
       }
 
-      if (Array.isArray(data)) {
+      if (taskList.length > 0) {
         const newStatusKeys = new Set<string>()
 
-        for (const t of data) {
+        for (const t of taskList) {
           const s = t.status || 'todo'
           if (grouped[s]) grouped[s].push(t)
           const key = statusMapKey(t)
