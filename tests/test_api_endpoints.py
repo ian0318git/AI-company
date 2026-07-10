@@ -593,8 +593,10 @@ async def test_create_and_list_pipeline(test_session: AsyncSession) -> None:
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         list_resp = await client.get("/api/pipelines/")
     assert list_resp.status_code == 200
-    all_pipelines = list_resp.json()
-    assert any(p["id"] == body["id"] for p in all_pipelines)
+    data = list_resp.json()
+    assert "items" in data
+    assert "total" in data
+    assert any(p["id"] == body["id"] for p in data["items"])
 
     app.dependency_overrides.clear()
 

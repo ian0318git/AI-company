@@ -8,9 +8,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ai_embedded_company.api.pagination import paginate_query
 from ai_embedded_company.storage import get_session
 from ai_embedded_company.storage.models import PipelineModel
-from ai_embedded_company.types import Pipeline, PipelineCreate, PipelinePhase, PipelineStep, TaskStatus
+from ai_embedded_company.types import PaginatedResponse, PipelineCreate, PipelinePhase, TaskStatus
 
 router = APIRouter()
 
@@ -44,24 +45,30 @@ async def create_pipeline(
 @router.get("/")
 async def list_pipelines(
     project_id: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
     session: AsyncSession = Depends(get_session),
-) -> list[dict]:
-    """List pipelines, optionally filtered by project."""
+) -> PaginatedResponse:
+    """List pipelines, optionally filtered by project. Paginated with limit/offset."""
     stmt = select(PipelineModel)
     if project_id:
         stmt = stmt.where(PipelineModel.project_id == project_id)
-    result = await session.execute(stmt)
-    pipelines = result.scalars().all()
-    return [
-        {
-            "id": p.id,
-            "project_id": p.project_id,
-            "pipeline_type": p.pipeline_type,
-            "current_phase": p.current_phase,
-            "created_at": p.created_at.isoformat() if p.created_at else None,
-        }
-        for p in pipelines
-    ]
+    stmt = stmt.order_by(PipelineModel.created_at.desc())
+    return await paginate_query(
+        session, stmt, PipelineModel, limit=limit, offset=offset,
+        converter=_model_to_dict,
+    )
+
+
+def _model_to_dict(p: PipelineModel) -> dict:
+    """Convert PipelineModel to a plain dict."""
+    return {
+        "id": p.id,
+        "project_id": p.project_id,
+        "pipeline_type": p.pipeline_type,
+        "current_phase": p.current_phase,
+        "created_at": p.created_at.isoformat() if p.created_at else None,
+    }
 
 
 @router.get("/{pipeline_id}")
