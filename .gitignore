@@ -31,6 +31,8 @@ htmlcov/
 
 # Database
 *.db
+*.db-shm
+*.db-wal
 *.sqlite3
 
 # Dashboard
@@ -68,3 +70,6 @@ migrations/versions/*.pyc
 /performance-baseline.md
 /*.response.json
 /export_*.md
+/advance_pipeline.py
+/check_pipeline.py
+/tmp_ideas.json
