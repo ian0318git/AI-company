@@ -291,6 +291,58 @@ async def test_project_update_status(test_session: AsyncSession) -> None:
 
 
 @pytest.mark.asyncio
+async def test_project_completion_guard_rejects_with_pending_tasks(
+    test_session: AsyncSession,
+) -> None:
+    """PATCH /api/projects/{id} returns 409 when project has non-done tasks."""
+    project = ProjectModel(name="Guard Test Project")
+    test_session.add(project)
+    await test_session.commit()
+    await test_session.refresh(project)
+
+    # Create a pending task for this project
+    task = TaskModel(
+        project_id=project.id,
+        title="Unfinished task",
+        status="pending",
+        priority="medium",
+    )
+    test_session.add(task)
+    await test_session.commit()
+
+    async def _override() -> AsyncSession:
+        yield test_session
+
+    app.dependency_overrides[get_session] = _override
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.patch(
+            f"/api/projects/{project.id}",
+            json={"status": "completed"},
+        )
+    assert resp.status_code == 409, \
+        f"Expected 409 when completing project with pending tasks, got {resp.status_code}: {resp.text[:200]}"
+    detail = resp.json().get("detail", "")
+    assert "not done" in detail.lower(), f"Error detail should mention unfinished tasks: {detail}"
+
+    # Complete the task, then completing should work
+    task.status = "done"
+    await test_session.commit()
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp2 = await client.patch(
+            f"/api/projects/{project.id}",
+            json={"status": "completed"},
+        )
+    assert resp2.status_code == 200, \
+        f"Expected 200 after all tasks done, got {resp2.status_code}: {resp2.text[:200]}"
+    assert resp2.json()["status"] == "completed"
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
 async def test_project_not_found(test_session: AsyncSession) -> None:
     """GET /api/projects/{id} returns 404 for nonexistent project."""
     async def _override() -> AsyncSession:
