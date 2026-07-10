@@ -587,7 +587,7 @@ async def refine_idea(
     if idea is None:
         raise HTTPException(status_code=404, detail="Idea not found")
 
-    # Heuristic pipeline suggestion
+    # Heuristic pipeline suggestion with scoring, negative keywords, and tie-breaking
     desc_lower = idea.raw_description.lower()
     try:
         tags = json.loads(idea.tags) if isinstance(idea.tags, str) else idea.tags
@@ -606,25 +606,55 @@ async def refine_idea(
     research_kw = ["分析", "分析報告", "report", "research", "研究", "市場",
                    "就業", "就業市場", "survey", "調研", "簡報", "文件"]
 
-    is_embedded = any(kw in desc_lower for kw in embedded_kw) or any(
-        t in [kw.lower() for kw in embedded_kw] for t in all_tags_lower)
-    is_linux = any(kw in desc_lower for kw in linux_kw) or any(
-        t in [kw.lower() for kw in linux_kw] for t in all_tags_lower)
-    is_web = any(kw in desc_lower for kw in web_kw) or any(
-        t in [kw.lower() for kw in web_kw] for t in all_tags_lower)
-    is_research = any(kw in desc_lower for kw in research_kw) or any(
-        t in [kw.lower() for kw in research_kw] for t in all_tags_lower)
+    # Negative keywords: if ANY appear, exclude that pipeline type
+    embedded_negative = ["web", "frontend", "react", "vue", "api", "backend",
+                         "純軟體", "software-only", "maintenance"]
+    web_negative = ["embedded", "firmware", "mcu", "韌體", "硬體", "c++",
+                    "c/c++", "sensor", "driver", "kernel"]
+    linux_negative = ["arduino", "mcu", "單晶片", "sensor", "embedded"]
 
-    if is_research:
-        suggested_pipeline = "research-spike"
-    elif is_linux:
-        suggested_pipeline = "embedded-linux"
-    elif is_embedded:
-        suggested_pipeline = "embedded-firmware"
-    elif is_web:
-        suggested_pipeline = "web-fullstack"
-    else:
-        suggested_pipeline = "quick-prototype"
+    def _score_pipeline(kw_list, negative_kw, tiebreaker):
+        """Score a pipeline type. Higher = better match. Negative = exclusion.
+        Tiebreaker only applies when at least one keyword matched."""
+        score = 0
+        for kw in kw_list:
+            if kw in desc_lower:
+                score += 2
+        for t in all_tags_lower:
+            if t in [kw.lower() for kw in kw_list]:
+                score += 1
+        # Negative keywords = instant exclusion
+        for nkw in negative_kw:
+            if nkw in desc_lower or nkw in all_tags_lower:
+                return -999
+        # Only add tiebreaker if there's at least one keyword match
+        if score > 0:
+            return score + tiebreaker
+        return score  # 0 — no matches, don't inflate with tiebreaker
+
+    scores = {
+        "embedded-firmware": _score_pipeline(embedded_kw, embedded_negative, 5),
+        "embedded-linux": _score_pipeline(linux_kw, linux_negative, 4),
+        "web-fullstack": _score_pipeline(web_kw, web_negative, 3),
+        "research-spike": _score_pipeline(research_kw, [], 2),
+        "quick-prototype": _score_pipeline([], [], 1),
+    }
+
+    # Backend-only fallback: if the idea mentions only backend/Python with
+    # NO frontend framework imports (react, vue, css, html), prefer quick-prototype
+    backend_only = (
+        any(kw in desc_lower for kw in ["backend", "python", "api", "fastapi"])
+        and not any(kw in desc_lower for kw in ["react", "vue", "frontend",
+                                                  "css", "html", "typescript",
+                                                  "ui/ux", "wireframe"])
+    )
+    if backend_only and scores["web-fullstack"] > 0 and scores["quick-prototype"] < scores["web-fullstack"]:
+        # Boost quick-prototype above web-fullstack when backend-only detected
+        scores["quick-prototype"] = scores["web-fullstack"] + 1
+
+    best = max(scores, key=scores.get)
+    best_score = scores[best]
+    suggested_pipeline = best if best_score > 0 else "quick-prototype"
 
     idea.suggested_pipeline = suggested_pipeline
     if payload and payload.refined_description:

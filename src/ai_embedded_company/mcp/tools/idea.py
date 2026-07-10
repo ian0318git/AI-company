@@ -97,23 +97,59 @@ def register_tools(mcp):
             except (json.JSONDecodeError, TypeError):
                 tags = []
 
-            # Heuristic pipeline suggestion
-            embedded_keywords = ["m5stack", "esp32", "stm32", "arduino", "sensor", "motor", "led", "gpio", "i2c", "spi", "firmware", "mcu", "rtos"]
-            linux_keywords = ["linux", "kernel", "driver", "buildroot", "yocto", "raspberry", "beaglebone"]
-            web_keywords = ["web", "website", "dashboard", "api", "frontend", "backend", "react", "vue", "app"]
+            # Heuristic pipeline suggestion with scoring and tie-breaking
+            # Each keyword group scores +2 per description match, +1 per tag match.
+            # Negative keyword matches score -5 (exclusion override).
+            # Wider/broader categories get lower tiebreaker priority.
 
-            is_embedded = any(kw in desc_lower for kw in embedded_keywords) or any(t.lower() in [kw.lower() for kw in embedded_keywords] for t in tags)
-            is_linux = any(kw in desc_lower for kw in linux_keywords) or any(t.lower() in [kw.lower() for kw in linux_keywords] for t in tags)
-            is_web = any(kw in desc_lower for kw in web_keywords) or any(t.lower() in [kw.lower() for kw in web_keywords] for t in tags)
+            embedded_kw = ["m5stack", "esp32", "stm32", "arduino", "sensor", "motor", "led", "gpio", "i2c", "spi", "firmware", "mcu", "rtos", "embedded", "韌體", "嵌入式", "開發板"]
+            linux_kw = ["linux", "kernel", "driver", "buildroot", "yocto", "raspberry", "beaglebone"]
+            web_kw = ["web", "website", "dashboard", "api", "frontend", "backend", "react", "vue", "app", "網頁", "前端", "後端"]
+            research_kw = ["分析", "分析報告", "report", "research", "研究", "市場", "就業", "就業市場", "survey", "調研", "簡報", "文件"]
 
-            if is_linux:
-                suggested_pipeline = "embedded-linux"
-            elif is_embedded:
-                suggested_pipeline = "embedded-firmware"
-            elif is_web:
-                suggested_pipeline = "web-fullstack"
-            else:
-                suggested_pipeline = "quick-prototype"
+            # Negative keywords: if ANY of these appear in description/tags, exclude the pipeline type
+            embedded_negative = ["web", "frontend", "react", "vue", "api", "backend", "純軟體", "software-only", "maintenance"]
+            web_negative = ["embedded", "firmware", "mcu", "韌體", "硬體", "c++", "c/c++"]
+            linux_negative = ["embedded", "arduino", "mcu", "單晶片", "sensor"]
+
+            def _score_pipeline(kw_list: list[str], negative_kw: list[str], tiebreaker: int) -> int:
+                """Score a pipeline type. Higher = better match.
+
+                Tiebreaker is only added when at least one keyword matches.
+                If no keyword matches at all, score is 0 (not tiebreaker).
+                """
+                score = 0
+                for kw in kw_list:
+                    if kw in desc_lower:
+                        score += 2
+                for t in tags:
+                    t_lower = t.lower() if isinstance(t, str) else t
+                    if t_lower in [kw.lower() for kw in kw_list]:
+                        score += 1
+                # Negative keywords = instant exclusion
+                for nkw in negative_kw:
+                    if nkw in desc_lower or any(
+                        (t.lower() if isinstance(t, str) else t) == nkw.lower()
+                        for t in tags
+                    ):
+                        return -999
+                # Only add tiebreaker if there's at least one keyword match
+                if score > 0:
+                    return score + tiebreaker
+                return score  # 0 — no matches, don't inflate with tiebreaker
+
+            scores = {
+                "embedded-firmware": _score_pipeline(embedded_kw, embedded_negative, 5),
+                "embedded-linux": _score_pipeline(linux_kw, linux_negative, 4),
+                "web-fullstack": _score_pipeline(web_kw, web_negative, 3),
+                "research-spike": _score_pipeline(research_kw, [], 2),
+                "quick-prototype": _score_pipeline([], [], 1),  # baseline 1pt
+            }
+
+            # Pick highest-scoring pipeline type
+            best = max(scores, key=scores.get)
+            best_score = scores[best]
+            suggested_pipeline = best if best_score > 0 else "quick-prototype"
 
             # Update the idea
             idea.suggested_pipeline = suggested_pipeline
