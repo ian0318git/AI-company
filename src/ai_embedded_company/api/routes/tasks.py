@@ -734,29 +734,29 @@ async def _auto_advance_if_all_done(session, project_id: str):
             project.status = "completed"
         return
 
-    # Advance to next phase
+    # Advance through ALL remaining phases up to "done" when all tasks are done
+    # (single-step was a bug: after one advance the pipeline sat in the next
+    #  phase with zero remaining tasks to trigger further advances)
     phase_order = ["idea", "requirements", "design", "implementation", "testing", "deploy", "done"]
     current_idx = phase_order.index(pipeline.current_phase) if pipeline.current_phase in phase_order else 0
-    next_idx = min(current_idx + 1, len(phase_order) - 1)
-    pipeline.current_phase = phase_order[next_idx]
-
-    # If advancing to "done", also mark the linked idea and project as done
-    if phase_order[next_idx] == "done":
-        if pipeline.idea_id:
-            from ai_embedded_company.storage.models import IdeaModel
-            idea_result = await session.execute(
-                select(IdeaModel).where(IdeaModel.id == pipeline.idea_id)
+    for next_idx in range(current_idx + 1, len(phase_order)):
+        pipeline.current_phase = phase_order[next_idx]
+        if phase_order[next_idx] == "done":
+            if pipeline.idea_id:
+                from ai_embedded_company.storage.models import IdeaModel
+                idea_result = await session.execute(
+                    select(IdeaModel).where(IdeaModel.id == pipeline.idea_id)
+                )
+                idea = idea_result.scalar_one_or_none()
+                if idea and idea.status != "done":
+                    idea.status = "done"
+            from ai_embedded_company.storage.models import ProjectModel
+            proj_result = await session.execute(
+                select(ProjectModel).where(ProjectModel.id == project_id)
             )
-            idea = idea_result.scalar_one_or_none()
-            if idea and idea.status != "done":
-                idea.status = "done"
-        from ai_embedded_company.storage.models import ProjectModel
-        proj_result = await session.execute(
-            select(ProjectModel).where(ProjectModel.id == project_id)
-        )
-        project = proj_result.scalar_one_or_none()
-        if project and project.status == "active":
-            project.status = "completed"
+            project = proj_result.scalar_one_or_none()
+            if project and project.status == "active":
+                project.status = "completed"
 
 
 # ── Model Conversion ──────────────────────────────────────────────────────

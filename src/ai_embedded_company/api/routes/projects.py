@@ -186,6 +186,21 @@ async def update_project(
     if payload.board_model is not None:
         model.board_model = payload.board_model
     if payload.status is not None:
+        # Antibody guard: verify all tasks done before allowing completion
+        if payload.status.value == "completed":
+            task_result = await session.execute(
+                select(TaskModel).where(
+                    TaskModel.project_id == project_id,
+                    TaskModel.status != "done",
+                )
+            )
+            orphan_tasks = task_result.scalars().all()
+            if orphan_tasks:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Cannot complete project: {len(orphan_tasks)} task(s) are not done. "
+                           f"Complete or reassign all tasks before marking the project completed.",
+                )
         model.status = payload.status.value
     model.updated_at = datetime.now(timezone.utc)
 

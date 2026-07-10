@@ -125,14 +125,24 @@ async def advance_pipeline(
             idea = idea_result.scalar_one_or_none()
             if idea and idea.status != "done":
                 idea.status = "done"
-        # Mark the project as done
-        from ai_embedded_company.storage.models import ProjectModel
+        # Mark the project as done only if all tasks are complete
+        from ai_embedded_company.storage.models import ProjectModel, TaskModel
+        task_result = await session.execute(
+            select(TaskModel).where(
+                TaskModel.project_id == p.project_id,
+                TaskModel.status != "done",
+            )
+        )
+        orphan_tasks = task_result.scalars().all()
         proj_result = await session.execute(
             select(ProjectModel).where(ProjectModel.id == p.project_id)
         )
         project = proj_result.scalar_one_or_none()
         if project and project.status == "active":
-            project.status = "completed"
+            if orphan_tasks:
+                project.status = "active"  # keep active — tasks remain
+            else:
+                project.status = "completed"
 
     await session.commit()
     await session.refresh(p)

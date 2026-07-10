@@ -653,6 +653,15 @@ async def start_idea(
     if idea is None:
         raise HTTPException(status_code=404, detail="Idea not found")
 
+    # Antibody guard: require refined_description before starting a pipeline
+    if not idea.refined_description or not idea.refined_description.strip():
+        raise HTTPException(
+            status_code=400,
+            detail=f"Idea '{idea.title}' has no refined description. "
+                   f"Please refine the idea first via POST /api/ideas/{idea_id}/refine "
+                   f"with a refined_description before starting a pipeline.",
+        )
+
     pipeline_type = idea.suggested_pipeline or "quick-prototype"
     pipeline_def = _PIPELINE_DEFS.get(pipeline_type, _PIPELINE_DEFS["quick-prototype"])
 
