@@ -694,7 +694,7 @@ async def get_idea(
     idea_id: str,
     session: AsyncSession = Depends(get_session),
 ) -> Idea:
-    """Get a single idea by ID."""
+    """Get a single idea by ID, including its current status, tags, and refined description."""
     result = await session.execute(
         select(IdeaModel).where(IdeaModel.id == idea_id)
     )

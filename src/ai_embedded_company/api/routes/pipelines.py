@@ -21,7 +21,7 @@ async def create_pipeline(
     payload: PipelineCreate,
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """Create a new pipeline."""
+    """Create a new pipeline under a project with a specified pipeline type and step definitions."""
     pipeline = PipelineModel(
         project_id=payload.project_id,
         pipeline_type=payload.pipeline_type.value if hasattr(payload.pipeline_type, 'value') else payload.pipeline_type,
@@ -76,7 +76,7 @@ async def get_pipeline(
     pipeline_id: str,
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """Get pipeline details."""
+    """Get pipeline details including all phases, step statuses, and current progress."""
     result = await session.execute(
         select(PipelineModel).where(PipelineModel.id == pipeline_id)
     )

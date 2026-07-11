@@ -147,7 +147,7 @@ async def autonomous_stop() -> dict:
 
 @router.get("/health")
 async def health_check():
-    """System health check endpoint."""
+    """System health check endpoint returning database status, uptime, and connectivity state."""
     return {
         "status": "healthy",
         "version": __version__,

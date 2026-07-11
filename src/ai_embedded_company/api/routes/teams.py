@@ -21,7 +21,7 @@ async def create_team(
     payload: TeamCreate,
     session: AsyncSession = Depends(get_session),
 ) -> Team:
-    """Create a new agent team."""
+    """Create a new agent team with a name, optional members, and project assignment."""
     team = TeamModel(
         name=payload.name,
         project_id=payload.project_id,
@@ -55,7 +55,7 @@ async def get_team(
     team_id: str,
     session: AsyncSession = Depends(get_session),
 ) -> Team:
-    """Get a single team by ID."""
+    """Get a single team by ID, including its members, roles, and project context."""
     result = await session.execute(
         select(TeamModel).where(TeamModel.id == team_id)
     )

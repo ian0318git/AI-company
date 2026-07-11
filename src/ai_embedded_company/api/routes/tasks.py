@@ -689,7 +689,7 @@ async def get_task(
     task_id: str,
     session: AsyncSession = Depends(get_session),
 ) -> Task:
-    """Get a single task by ID."""
+    """Get a single task by ID, including its status, time tracking, and agent assignment."""
     result = await session.execute(
         select(TaskModel).where(TaskModel.id == task_id)
     )

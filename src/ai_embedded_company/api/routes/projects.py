@@ -37,7 +37,7 @@ async def create_project(
     payload: ProjectCreate,
     session: AsyncSession = Depends(get_session),
 ) -> Project:
-    """Create a new project."""
+    """Create a new project with name, description, status, and optional team assignment."""
     project = ProjectModel(
         name=payload.name,
         description=payload.description,
@@ -73,7 +73,7 @@ async def get_project(
     project_id: str,
     session: AsyncSession = Depends(get_session),
 ) -> Project:
-    """Get a single project by ID."""
+    """Get a single project by ID, including its metadata, status, and team associations."""
     result = await session.execute(
         select(ProjectModel).where(ProjectModel.id == project_id)
     )
@@ -169,7 +169,7 @@ async def update_project(
     payload: ProjectUpdate,
     session: AsyncSession = Depends(get_session),
 ) -> Project:
-    """Update a project."""
+    """Update a project's name, description, status, or team configuration by ID."""
     result = await session.execute(
         select(ProjectModel).where(ProjectModel.id == project_id)
     )

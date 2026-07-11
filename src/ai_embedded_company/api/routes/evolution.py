@@ -277,7 +277,7 @@ async def list_research(
     limit: int = 20,
     session: AsyncSession = Depends(get_session),
 ) -> list[dict]:
-    """List research findings."""
+    """List research findings with optional filters for status, type, and date range."""
     stmt = select(ResearchFinding)
     if status:
         stmt = stmt.where(ResearchFinding.status == status)

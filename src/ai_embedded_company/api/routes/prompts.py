@@ -156,7 +156,7 @@ async def create_template(
     payload: PromptTemplateCreate,
     session: AsyncSession = Depends(get_session),
 ) -> PromptTemplateOut:
-    """Create a new prompt template."""
+    """Create a new prompt template with name, body, parameters, and optional metadata tags."""
     template = PromptTemplateModel(
         id=_uuid(),
         agent_role=payload.agent_role,
@@ -340,7 +340,7 @@ async def list_experiments(
     status: Optional[str] = None,
     session: AsyncSession = Depends(get_session),
 ) -> list[ABTestOut]:
-    """List A/B test experiments."""
+    """List A/B test experiments with optional status filter and result summaries."""
     stmt = select(ABExperimentModel).order_by(ABExperimentModel.started_at.desc())
     if status:
         stmt = stmt.where(ABExperimentModel.status == status)
