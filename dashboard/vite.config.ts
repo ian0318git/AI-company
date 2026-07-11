@@ -16,6 +16,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
+      host: true,   // bind to all network interfaces (0.0.0.0)
       port: 5173,
       proxy: {
         '/api': {
@@ -33,6 +34,10 @@ export default defineConfig(({ mode }) => {
         '/autonomous': {
           target: apiTarget,
           changeOrigin: true,
+        },
+        '/ws': {
+          target: apiTarget,
+          ws: true,
         },
       },
     },

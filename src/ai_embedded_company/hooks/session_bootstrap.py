@@ -83,7 +83,13 @@ def _check_idle_and_seed() -> str | None:
 
     Detects fully idle state (no pending tasks, no active projects, no pending ideas)
     and revives the highest-priority archived idea to keep the system running.
+
+    NOTE: Skipped when AI_TEAM_EVOLUTION_PAUSED=true — user wants no auto-execution.
     """
+    # Pause switch: user disabled auto-execution
+    if os.environ.get("AI_TEAM_EVOLUTION_PAUSED", "").lower() in ("true", "1", "yes"):
+        return None
+
     try:
         ideas = _get("/api/ideas/?limit=50")
         tasks = _get("/api/tasks/?limit=300")
