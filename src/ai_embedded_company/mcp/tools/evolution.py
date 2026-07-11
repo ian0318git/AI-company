@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 
 from ai_embedded_company.storage.database import _get_sessionmaker
 from ai_embedded_company.storage.models import FailureRecord, ResearchFinding, KnowledgeModel
+
+
+def _is_evolution_paused() -> bool:
+    """Check if self-evolution is globally paused."""
+    return os.environ.get("AI_TEAM_EVOLUTION_PAUSED", "").lower() in ("true", "1", "yes")
 
 
 def register_tools(mcp):
@@ -103,6 +109,8 @@ def register_tools(mcp):
         - vaccine: pre-task warning for similar future tasks
         - catalyst: prompt improvement to inject into agent system prompts
         """
+        if _is_evolution_paused():
+            return {"status": "paused", "message": "Evolution paused via AI_TEAM_EVOLUTION_PAUSED. Set to false to resume."}
         sessionmaker = _get_sessionmaker()
         async with sessionmaker() as session:
             from sqlalchemy import select
@@ -285,6 +293,8 @@ def register_tools(mcp):
             debate_notes: Summary of agent debate/discussion
             action_items: JSON list of action items derived from this finding
         """
+        if _is_evolution_paused():
+            return {"status": "paused", "message": "Evolution paused via AI_TEAM_EVOLUTION_PAUSED. Set to false to resume."}
         sessionmaker = _get_sessionmaker()
         async with sessionmaker() as session:
             from sqlalchemy import select

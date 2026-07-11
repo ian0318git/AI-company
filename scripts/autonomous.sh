@@ -18,6 +18,17 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# ── Evolution pause guard ─────────────────────────────────────────────────
+if [ "${AI_TEAM_EVOLUTION_PAUSED:-}" = "true" ] || [ "${AI_TEAM_EVOLUTION_PAUSED:-}" = "1" ]; then
+    echo ""
+    echo "⏸️  SELF-EVOLUTION IS PAUSED (AI_TEAM_EVOLUTION_PAUSED=true)"
+    echo ""
+    echo "  The autonomous loop will not start."
+    echo "  To resume: export AI_TEAM_EVOLUTION_PAUSED=false"
+    echo ""
+    exit 0
+fi
+
 # ── Safety guard: require explicit confirmation ───────────────────────────
 # Without --yes, the script prints instructions and exits.
 # This prevents accidental runs (e.g.,半夜自動執行).

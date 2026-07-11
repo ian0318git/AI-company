@@ -7,6 +7,7 @@ from archived candidates or known improvement opportunities.
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -182,6 +183,11 @@ class AutoSeedGenerator:
     def generate(self, idle_state: IdleState, used_templates: set[str]) -> list[dict[str, str]]:
         """Generate seed ideas for deep idle states."""
         if idle_state.depth != IdleDepth.DEEP:
+            return []
+
+        # Pause switch: set AI_TEAM_EVOLUTION_PAUSED=true to disable all self-evolution
+        if os.environ.get("AI_TEAM_EVOLUTION_PAUSED", "").lower() in ("true", "1", "yes"):
+            logger.info("AutoSeedGenerator: evolution paused via AI_TEAM_EVOLUTION_PAUSED")
             return []
 
         seeds: list[dict[str, str]] = []
